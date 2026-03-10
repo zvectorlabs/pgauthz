@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  PGRX_VERSION: "0.17.0"
 
 jobs:
   ci:
@@ -15,6 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            libclang-dev \
+            clang \
+            pkg-config \
+            libssl-dev \
+            postgresql-server-dev-16
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -27,10 +38,21 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin/cargo-pgrx
+            ~/.pgrx
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-pgrx${{ env.PGRX_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-pgrx${{ env.PGRX_VERSION }}-
+
+      - name: Install cargo-pgrx
+        run: |
+          if ! cargo pgrx --version 2>/dev/null | grep -q "${{ env.PGRX_VERSION }}"; then
+            cargo install cargo-pgrx --version ${{ env.PGRX_VERSION }} --locked
+          fi
+
+      - name: Init pgrx
+        run: cargo pgrx init --pg16 $(which pg_config)
 
       - name: Run CI
         run: make ci
