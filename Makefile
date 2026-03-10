@@ -155,7 +155,7 @@ package:
 # After bumping, the git tag (v$(VERSION)) drives the release workflow:
 #   - Artifact filenames embed the tag:  pgauthz-0.2.0-pg18-ubuntu2404-amd64.tar.gz
 #   - GitHub Release title = tag name
-#   - Trunk publish uses the tag version
+#   - Docker images are pushed to ghcr.io/zvectorlabs/pgauthz
 #
 # Release workflow:
 #   make bump VERSION=0.2.0   # edits files, commits, tags

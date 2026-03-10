@@ -108,7 +108,13 @@ jobs:
       - name: Detect package output path
         id: pkg
         run: |
-          PKG_DIR=$(find target/release/pgauthz-pg${{ matrix.pg }}-* -maxdepth 0 -type d 2>/dev/null | head -1)
+          PKG_DIR=$(find target/release -maxdepth 1 -type d -name "pgauthz-pg${{ matrix.pg }}-*" 2>/dev/null | head -1)
+          if [ -z "$PKG_DIR" ]; then
+            echo "Error: no package directory found under target/release for pg${{ matrix.pg }}" >&2
+            echo "Available dirs:" >&2
+            ls target/release/ 2>/dev/null || true
+            exit 1
+          fi
           echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
 
       - name: Determine OS slug
@@ -142,7 +148,7 @@ jobs:
             -v "${VERSION}" \
             -a "${ARCH_DEB}" \
             --description "Zanzibar-style authorization as a Postgres extension" \
-            --url "https://github.com/${{ github.repository }}" \
+            --url "https://github.com/zvectorlabs/pgauthz" \
             --license MIT \
             --depends "postgresql-${{ matrix.pg }}" \
             --deb-compression gz \
@@ -203,7 +209,7 @@ jobs:
             **Via .deb (Ubuntu/Debian, recommended):**
             ```bash
             # Example: PG17, Ubuntu 24.04, amd64
-            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/pgauthz-pg17_<version>_amd64_ubuntu2404.deb
+            wget https://github.com/zvectorlabs/pgauthz/releases/download/${{ github.ref_name }}/pgauthz-pg17_<version>_amd64_ubuntu2404.deb
             sudo dpkg -i pgauthz-pg17_*.deb
             ```
 
@@ -217,40 +223,95 @@ jobs:
             CREATE EXTENSION pgauthz;
             ```
 
-            See [README](https://github.com/${{ github.repository }}#readme) for full setup.
+            **Via Docker:**
+            ```bash
+            # Postgres 17 with pgauthz pre-installed
+            docker run --rm -e POSTGRES_PASSWORD=secret \
+              ghcr.io/zvectorlabs/pgauthz:${{ github.ref_name }}-pg17
+
+            # Then in psql:
+            # CREATE EXTENSION pgauthz;
+            ```
+
+            See [README](https://github.com/zvectorlabs/pgauthz#readme) for full setup.
           files: artifacts/*
           fail_on_unmatched_files: false
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
 
   # ---------------------------------------------------------------------------
-  # Publish to Trunk (pgt.dev) — stable releases only
+  # Build and push Docker images to GHCR
+  #
+  # Image tags pushed for each PG version:
+  #   ghcr.io/zvectorlabs/pgauthz:<version>-pg<N>   (e.g. 0.2.0-pg17)
+  #   ghcr.io/zvectorlabs/pgauthz:pg<N>              (latest stable for that PG)
+  #   ghcr.io/zvectorlabs/pgauthz:latest             (latest stable, defaults to highest PG)
+  #
+  # Multi-platform: linux/amd64 + linux/arm64 via Docker BuildKit.
+  # Requires no extra secrets — GITHUB_TOKEN has write:packages permission.
   # ---------------------------------------------------------------------------
-  publish-trunk:
-    name: Publish to Trunk
+  publish-docker:
+    name: Docker (pg${{ matrix.pg }})
     needs: build
     runs-on: ubuntu-latest
+    # Only publish stable releases (no -rc.1 / -beta suffixes)
     if: ${{ !contains(github.ref_name, '-') }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["16", "17", "18"]
+        include:
+          # highest PG version also gets the plain :latest tag
+          - pg: "18"
+            latest: true
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install trunk CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/tembo-io/trunk/main/contrib/install.sh | bash
-          echo "$HOME/.trunk/bin" >> $GITHUB_PATH
+      - name: Set up QEMU (for arm64 cross-build)
+        uses: docker/setup-qemu-action@v3
 
-      - name: Publish to Trunk
-        env:
-          TRUNK_API_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: tags
         run: |
-          trunk publish \
-            --name pgauthz \
-            --version "${GITHUB_REF_NAME#v}" \
-            --description "Zanzibar-style authorization as a Postgres extension" \
-            --homepage "https://github.com/${{ github.repository }}" \
-            --license MIT \
-            --pg-version 16 \
-            --pg-version 17 \
-            --pg-version 18 \
-            .
+          VERSION="${GITHUB_REF_NAME#v}"
+          REPO="ghcr.io/zvectorlabs/pgauthz"
+          TAGS="${REPO}:${VERSION}-pg${{ matrix.pg }},${REPO}:pg${{ matrix.pg }}"
+          if [ "${{ matrix.latest }}" = "true" ]; then
+            TAGS="${TAGS},${REPO}:latest"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            PG_MAJOR=${{ matrix.pg }}
+            PGRX_VERSION=${{ env.PGRX_VERSION }}
+          # Cache layers in GHCR to speed up subsequent builds
+          cache-from: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }}
+          cache-to: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }},mode=max
+          labels: |
+            org.opencontainers.image.version=${{ steps.tags.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+

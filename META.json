@@ -1,7 +1,7 @@
 {
   "name": "pgauthz",
   "abstract": "Zanzibar-style authorization as a Postgres extension",
-  "description": "pgauthz brings Google Zanzibar-style relationship-based authorization directly into PostgreSQL. Define authorization policies, write relationship tuples, and check permissions \u2014 all from SQL.",
+  "description": "pgauthz brings Google Zanzibar-style relationship-based authorization directly into PostgreSQL. Define authorization policies, write relationship tuples, and check permissions — all from SQL.",
   "version": "0.2.0",
   "maintainer": [
     "pgauthz contributors"
@@ -22,19 +22,19 @@
     }
   },
   "resources": {
-    "homepage": "https://github.com/your-org/pgauthz",
+    "homepage": "https://github.com/zvectorlabs/pgauthz",
     "bugtracker": {
-      "web": "https://github.com/your-org/pgauthz/issues"
+      "web": "https://github.com/zvectorlabs/pgauthz/issues"
     },
     "repository": {
-      "url": "https://github.com/your-org/pgauthz.git",
-      "web": "https://github.com/your-org/pgauthz",
+      "url": "https://github.com/zvectorlabs/pgauthz.git",
+      "web": "https://github.com/zvectorlabs/pgauthz",
       "type": "git"
     }
   },
   "generated_by": "hand",
   "meta-spec": {
-    "version": "0.1.1",
+    "version": "1.0.0",
     "url": "https://pgxn.org/spec/"
   }
 }
