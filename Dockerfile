@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
     ca-certificates \
+    postgresql-${PG_MAJOR} \
     postgresql-server-dev-${PG_MAJOR} \
     && rm -rf /var/lib/apt/lists/*
 
@@ -56,8 +57,7 @@ RUN cargo pgrx package -p pgauthz \
 
 # Collect the built files into /pgauthz-pkg/ preserving the OS path structure
 # so we can COPY --from=builder /pgauthz-pkg/ / in the final stage.
-RUN PKG_DIR=$(find /build/target/release/pgauthz-pg${PG_MAJOR}-* \
-        -maxdepth 0 -type d | head -1) \
+RUN PKG_DIR=$(find /build/target/release -maxdepth 1 -type d -name "pgauthz-pg${PG_MAJOR}*" | head -1) \
     && mkdir -p /pgauthz-pkg \
     && cp -r "${PKG_DIR}/." /pgauthz-pkg/
 
@@ -74,4 +74,4 @@ RUN ls /usr/lib/postgresql/${PG_MAJOR}/lib/pgauthz.so \
 
 LABEL org.opencontainers.image.source="https://github.com/zvectorlabs/pgauthz" \
       org.opencontainers.image.description="Zanzibar-style authorization as a Postgres extension" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="Apache-2.0"

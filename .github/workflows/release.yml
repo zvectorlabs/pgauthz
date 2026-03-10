@@ -150,7 +150,7 @@ jobs:
             -a "${ARCH_DEB}" \
             --description "Zanzibar-style authorization as a Postgres extension" \
             --url "https://github.com/zvectorlabs/pgauthz" \
-            --license MIT \
+            --license Apache-2.0 \
             --depends "postgresql-${{ matrix.pg }}" \
             --deb-compression gz \
             -p "$DEB_NAME" \
