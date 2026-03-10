@@ -30,7 +30,7 @@ all-features = true
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 pgrx = { version = "0.17", default-features = false, features = ["pg16"] }
-authz-core = { path = "../../../authz-core" }
+authz-core = "0.1.0"
 authz-datastore-pgx = { path = "../authz-datastore-pgx", features = ["pgx"] }
 pollster = "0.3"
 tokio = { version = "1", features = ["sync", "rt-multi-thread"] }
