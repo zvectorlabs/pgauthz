@@ -67,7 +67,7 @@ SELECT pgauthz_check('document', 'doc1', 'viewer', 'user', 'alice');
 
 ## License
 
-[License information to be added]
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
