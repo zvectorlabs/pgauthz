@@ -1,14 +1,14 @@
 # pgauthz
 
-Zanzibar-style authorization as a PostgreSQL extension.
+[Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/)-style authorization as a PostgreSQL extension.
 
 ## Overview
 
-pgauthz brings Google Zanzibar-style authorization directly into PostgreSQL, enabling fine-grained access control with relationship-based permissions. Built as a native PostgreSQL extension, it provides high-performance authorization checks with built-in caching, observability, and structured error handling.
+pgauthz brings Google [Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/)-style authorization directly into PostgreSQL, enabling fine-grained access control with relationship-based permissions. Built as a native PostgreSQL extension, it provides high-performance authorization checks with built-in caching, observability, and structured error handling.
 
 ## Key Features
 
-- **Zanzibar-Style Authorization** - Relationship-based access control with computed permissions
+- **[Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/)-Style Authorization** - Relationship-based access control with computed permissions
 - **PostgreSQL Native** - Runs directly in your database as an extension
 - **High Performance** - Multi-level caching (L1 model, L2 result, L3 tuple)
 - **Observability** - OpenTelemetry metrics and tracing support

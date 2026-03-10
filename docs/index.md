@@ -1,6 +1,6 @@
 # pgauthz Documentation
 
-Welcome to the pgauthz documentation. pgauthz is a PostgreSQL extension that implements Google Zanzibar-style authorization, bringing fine-grained, relationship-based access control directly into your database.
+Welcome to the pgauthz documentation. pgauthz is a PostgreSQL extension that implements Google [Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/)-style authorization, bringing fine-grained, relationship-based access control directly into your database.
 
 ## What is pgauthz?
 
@@ -28,7 +28,7 @@ Multi-level caching system:
 - Structured error handling with PostgreSQL SQLSTATE codes
 - OpenTelemetry metrics and tracing
 - Comprehensive test coverage
-- Battle-tested Zanzibar algorithm
+- Battle-tested [Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/) algorithm
 
 ### Flexible & Powerful
 - Conditional permissions based on context (time, IP, custom attributes)
@@ -106,7 +106,7 @@ Enable flexible sharing patterns with viewer, editor, and owner roles.
 
 ## Architecture
 
-pgauthz implements the Google Zanzibar authorization model:
+pgauthz implements the Google [Zanzibar](https://research.google/pubs/zanzibar-googles-consistent-global-authorization-system/) authorization model:
 
 1. **Policy Definition** - Define object types, relations, and permission rules
 2. **Relation Storage** - Store relationships between objects and subjects
