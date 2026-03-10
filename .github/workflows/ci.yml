@@ -16,12 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout authz-core
-        uses: actions/checkout@v4
-        with:
-          repository: YOUR_ORG/authz-core
-          path: ../authz-core
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
