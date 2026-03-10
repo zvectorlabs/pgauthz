@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "authz-datastore-pgx"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "async-trait",
  "authz-core",
@@ -1590,7 +1590,7 @@ dependencies = [
 
 [[package]]
 name = "pgauthz"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "async-trait",
  "authz-core",

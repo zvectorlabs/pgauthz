@@ -1,6 +1,6 @@
 [package]
 name = "authz-datastore-pgx"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 description = "SPI-based datastore impl for pgauthz extension"
 
