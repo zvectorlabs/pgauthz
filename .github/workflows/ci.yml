@@ -40,6 +40,7 @@ jobs:
             clang \
             pkg-config \
             libssl-dev \
+            postgresql-${{ matrix.pg }} \
             postgresql-server-dev-${{ matrix.pg }}
 
       - name: Install Rust toolchain

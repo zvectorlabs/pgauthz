@@ -48,6 +48,7 @@ jobs:
         run: |
           sudo apt-get install -y \
             libclang-dev clang pkg-config libssl-dev \
+            postgresql-${{ matrix.pg }} \
             postgresql-server-dev-${{ matrix.pg }} \
             ruby ruby-dev build-essential
           sudo gem install --no-document fpm
