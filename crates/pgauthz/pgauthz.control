@@ -1,5 +1,5 @@
 comment = 'Authz — Zanzibar-style authorization as a Postgres extension'
-default_version = '0.2.0'
+default_version = '0.2.1'
 module_pathname = '$libdir/pgauthz'
 relocatable = false
 schema = public

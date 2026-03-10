@@ -1,8 +1,8 @@
 {
   "name": "pgauthz",
   "abstract": "Zanzibar-style authorization as a Postgres extension",
-  "description": "pgauthz brings Google Zanzibar-style relationship-based authorization directly into PostgreSQL. Define authorization policies, write relationship tuples, and check permissions — all from SQL.",
-  "version": "0.2.0",
+  "description": "pgauthz brings Google Zanzibar-style relationship-based authorization directly into PostgreSQL. Define authorization policies, write relationship tuples, and check permissions \u2014 all from SQL.",
+  "version": "0.2.1",
   "maintainer": [
     "pgauthz contributors"
   ],
@@ -18,7 +18,7 @@
     "pgauthz": {
       "abstract": "Zanzibar-style authorization functions for PostgreSQL",
       "file": "crates/pgauthz/pgauthz.control",
-      "version": "0.2.0"
+      "version": "0.2.1"
     }
   },
   "resources": {
