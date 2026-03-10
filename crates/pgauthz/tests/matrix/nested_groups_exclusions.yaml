@@ -1,0 +1,378 @@
+# Nested groups with exclusion and intersection test matrix
+# Tests complex group membership patterns with deny-list style exclusions
+
+name: "nested_groups_exclusions_test"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user | group#member]
+      define admin: [user]
+      define intern: [user]
+      define allowed: [user]
+    permissions
+      define intern_but_not_allowed = intern - allowed
+      define non_intern_member = member - intern_but_not_allowed
+      define admin_or_allowed = admin + allowed
+      define admin_and_allowed = admin & allowed
+  }
+  type document {
+    relations
+      define viewer: [user | group#non_intern_member]
+      define editor: [user | group#admin_or_allowed]
+      define owner: [user]
+    permissions
+      define view = viewer
+      define edit = editor
+      define delete = owner
+  }
+  type project {
+    relations
+      define member: [user | group#member]
+      define lead: [user]
+      define reviewer: [user]
+    permissions
+      define can_review = reviewer + lead
+      define can_edit = member & reviewer + lead
+  }
+
+tests:
+  # Basic nested group membership
+  - name: "nested_group_membership"
+    description: "User in nested group should have access"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:alice"
+        - object: "group:frontend"
+          relation: "member"
+          subject: "group:engineering#member"
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "group:frontend#member"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+
+  # Exclusion within group permissions
+  - name: "group_exclusion_intern_vs_allowed"
+    description: "Intern but not allowed should exclude interns from allowed list"
+    # Permission: intern_but_not_allowed = intern - allowed
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    # Evaluations:
+    # - alice: intern=true, allowed=false → true - false = true (intern but not allowed)
+    # - bob: intern=false, allowed=true → false - true = false (not intern, doesn't qualify)
+    # - charlie: intern=true, allowed=true → true - true = false (intern but also allowed, excluded)
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:charlie"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:charlie"
+    assertions:
+      - type: "Check"
+        object: "group:engineering"
+        relation: "intern_but_not_allowed"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "intern_but_not_allowed"
+        subject: "user:bob"
+        allowed: false
+      - type: "Check"
+        object: "group:engineering"
+        relation: "intern_but_not_allowed"
+        subject: "user:charlie"
+        allowed: false
+
+  # Non-intern member permission
+  - name: "non_intern_member_permission"
+    description: "Non-intern member should have access, interns excluded"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:charlie"
+    assertions:
+      - type: "Check"
+        object: "group:engineering"
+        relation: "non_intern_member"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "non_intern_member"
+        subject: "user:bob"
+        allowed: false
+      - type: "Check"
+        object: "group:engineering"
+        relation: "non_intern_member"
+        subject: "user:charlie"
+        allowed: false
+
+  # Document access through group with exclusions
+  - name: "document_access_through_group_exclusions"
+    description: "Document access should respect group exclusion logic"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "group:engineering#non_intern_member"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:bob"
+        allowed: false
+
+  # Admin and allowed union/intersection
+  - name: "admin_allowed_union_intersection"
+    description: "Union and intersection of admin and allowed permissions"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "admin"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "admin"
+          subject: "user:charlie"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:charlie"
+    assertions:
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_or_allowed"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_or_allowed"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_or_allowed"
+        subject: "user:charlie"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_and_allowed"
+        subject: "user:alice"
+        allowed: false
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_and_allowed"
+        subject: "user:bob"
+        allowed: false
+      - type: "Check"
+        object: "group:engineering"
+        relation: "admin_and_allowed"
+        subject: "user:charlie"
+        allowed: true
+
+  # Document editor access through admin/allowed
+  - name: "document_editor_through_admin_allowed"
+    description: "Document editor should respect admin/allowed logic"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "admin"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "document:doc1"
+          relation: "editor"
+          subject: "group:engineering#admin_or_allowed"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "edit"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "edit"
+        subject: "user:bob"
+        allowed: true
+
+  # Complex nested exclusion
+  - name: "complex_nested_exclusion"
+    description: "Multiple levels of nested exclusions"
+    # Permission chain: view = viewer = [user | group#non_intern_member]
+    # non_intern_member = member - intern_but_not_allowed
+    # intern_but_not_allowed = intern - allowed
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    # Evaluations:
+    # - alice: member=true, intern=false, allowed=false → non_intern_member=true - (false - false)=true - false=true → view=true
+    # - bob: member=true, intern=true, allowed=true → non_intern_member=true - (true - true)=true - false=true → view=true
+    # - charlie: member=false, intern=true, allowed=false → non_intern_member=false - (true - false)=false - true=false → view=false
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "allowed"
+          subject: "user:bob"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:charlie"
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "group:engineering#non_intern_member"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:charlie"
+        allowed: false
+
+  # Project permissions with intersection
+  - name: "project_permissions_with_intersection"
+    description: "Project permissions using intersection"
+    setup:
+      tuples:
+        - object: "project:proj1"
+          relation: "member"
+          subject: "user:alice"
+        - object: "project:proj1"
+          relation: "reviewer"
+          subject: "user:alice"
+        - object: "project:proj1"
+          relation: "member"
+          subject: "user:bob"
+        - object: "project:proj1"
+          relation: "lead"
+          subject: "user:bob"
+    assertions:
+      - type: "Check"
+        object: "project:proj1"
+        relation: "can_edit"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "project:proj1"
+        relation: "can_edit"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "project:proj1"
+        relation: "can_review"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "project:proj1"
+        relation: "can_review"
+        subject: "user:bob"
+        allowed: true
+
+  # Edge cases
+  - name: "empty_group_exclusions"
+    description: "Empty groups should handle exclusions gracefully"
+    # Setup: alice is member only, aliceintern is intern only
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    # Evaluations:
+    # - intern_but_not_allowed for alice: intern - allowed = false - false = false
+    # - non_intern_member for alice: member - intern_but_not_allowed = true - false = true
+    # - intern_but_not_allowed for aliceintern: intern - allowed = true - false = true (intern but not allowed)
+    # - non_intern_member for aliceintern: member - intern_but_not_allowed = false - true = false (not a member)
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "user:alice"
+        - object: "group:engineering"
+          relation: "intern"
+          subject: "user:aliceintern"
+    assertions:
+      - type: "Check"
+        object: "group:engineering"
+        relation: "intern_but_not_allowed"
+        subject: "user:alice"
+        allowed: false
+      - type: "Check"
+        object: "group:engineering"
+        relation: "non_intern_member"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "intern_but_not_allowed"
+        subject: "user:aliceintern"
+        allowed: true
+      - type: "Check"
+        object: "group:engineering"
+        relation: "non_intern_member"
+        subject: "user:aliceintern"
+        allowed: false
+
+  - name: "self_referencing_group"
+    description: "Groups that reference themselves should not cause issues"
+    setup:
+      tuples:
+        - object: "group:engineering"
+          relation: "member"
+          subject: "group:engineering#member"
+    assertions:
+      - type: "Check"
+        object: "group:engineering"
+        relation: "member"
+        subject: "user:alice"
+        allowed: false

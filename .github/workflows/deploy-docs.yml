@@ -1,0 +1,89 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'skills/**'
+      - 'agents/**'
+      - 'mkdocs.yml'
+      - 'versions/**'
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Get Git information
+        id: git
+        run: |
+          GIT_HASH=${{ github.sha }}
+          GIT_SHORT=${GIT_HASH:0:8}
+          echo "hash=$GIT_HASH" >> $GITHUB_OUTPUT
+          echo "short=$GIT_SHORT" >> $GITHUB_OUTPUT
+          echo "Git Hash: $GIT_HASH"
+          echo "Short Hash: $GIT_SHORT"
+      
+      - name: Update version mappings
+        run: |
+          chmod +x scripts/update-hash-mappings.sh
+          ./scripts/update-hash-mappings.sh ${{ steps.git.outputs.hash }} ${{ github.ref }}
+      
+      - name: Build documentation
+        env:
+          GIT_HASH: ${{ steps.git.outputs.hash }}
+          GIT_SHORT: ${{ steps.git.outputs.short }}
+        run: |
+          chmod +x scripts/build-docs.sh
+          ./scripts/build-docs.sh
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: git/${{ steps.git.outputs.short }}
+          keep_files: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+      
+      - name: Update latest symlink
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site/git/${{ steps.git.outputs.short }}
+          destination_dir: latest
+          keep_files: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+      
+      - name: Deploy version map
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./versions
+          destination_dir: versions
+          keep_files: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'

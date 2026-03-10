@@ -1,0 +1,165 @@
+name: "comprehensive_v1"
+model: |
+  type user {}
+
+  type group {
+    relations
+      define member: [user]
+      define admin: [user]
+  }
+
+  type team {
+    relations
+      define member: [user | group#member]
+      define lead: [user]
+  }
+
+  type document {
+    relations
+      define owner: [user]
+      define editor: [user | group#member | team#member]
+      define viewer: [user | group#member]
+      define parent: [document]
+    permissions
+      define edit = editor + owner
+      define view = viewer + edit + parent->view
+      define delete = owner
+  }
+
+  type bucket {
+    relations
+      define owner: [user]
+      define uploader: [user | team#member]
+      define viewer: [user | group#member]
+    permissions
+      define upload = uploader + owner
+      define download = viewer + upload
+      define delete = owner
+      define admin = owner
+  }
+
+  type object {
+    relations
+      define bucket: [bucket]
+      define owner: [user]
+    permissions
+      define read = owner + bucket->viewer
+      define write = owner + bucket->uploader
+      define delete = owner
+  }
+
+  type organization {
+    relations
+      define billing_admin: [user]
+      define member: [user]
+    permissions
+      define manage_payment = billing_admin
+      define view_invoices = billing_admin + member
+  }
+
+  type invoice {
+    relations
+      define organization: [organization]
+    permissions
+      define view = organization->view_invoices
+      define pay = organization->manage_payment
+  }
+
+  condition business_hours(hour: int, day: string) {
+    hour >= 9 && hour <= 17 && day != "saturday" && day != "sunday"
+  }
+
+  condition ip_whitelist(allowed_ips: list<string>, current_ip: string) {
+    current_ip in allowed_ips
+  }
+
+tests:
+  - name: "document_owner_direct_owner"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "owner"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "owner"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "group_member_can_view_document"
+    setup:
+      tuples:
+        - object: "group:eng"
+          relation: "member"
+          subject: "user:bob"
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "group:eng#member"
+    assertions:
+      - type: "Check"
+        object: "document:doc2"
+        relation: "viewer"
+        subject: "user:bob"
+        allowed: true
+
+  - name: "team_member_direct_uploader_on_bucket"
+    setup:
+      tuples:
+        - object: "team:dev"
+          relation: "member"
+          subject: "user:carol"
+        - object: "bucket:b1"
+          relation: "uploader"
+          subject: "team:dev#member"
+    assertions:
+      - type: "Check"
+        object: "bucket:b1"
+        relation: "uploader"
+        subject: "user:carol"
+        allowed: true
+
+  - name: "organization_direct_roles"
+    setup:
+      tuples:
+        - object: "organization:org1"
+          relation: "billing_admin"
+          subject: "user:dan"
+        - object: "organization:org1"
+          relation: "member"
+          subject: "user:erin"
+        - object: "invoice:inv1"
+          relation: "organization"
+          subject: "organization:org1"
+    assertions:
+      - type: "Check"
+        object: "organization:org1"
+        relation: "billing_admin"
+        subject: "user:dan"
+        allowed: true
+      - type: "Check"
+        object: "organization:org1"
+        relation: "member"
+        subject: "user:erin"
+        allowed: true
+      - type: "Check"
+        object: "organization:org1"
+        relation: "billing_admin"
+        subject: "user:erin"
+        allowed: false
+
+  - name: "document_parent_direct_tuple"
+    setup:
+      tuples:
+        - object: "document:root"
+          relation: "viewer"
+          subject: "user:zoe"
+        - object: "document:child"
+          relation: "parent"
+          subject: "document:root"
+    assertions:
+      - type: "Check"
+        object: "document:child"
+        relation: "parent"
+        subject: "document:root"
+        allowed: true

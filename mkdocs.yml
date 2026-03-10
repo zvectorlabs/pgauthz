@@ -1,0 +1,100 @@
+site_name: pgauthz Documentation
+site_description: Zanzibar-style authorization for PostgreSQL
+site_url: https://docs.pgauthz.dev
+repo_url: https://github.com/zvectorlabs/pgauthz
+repo_name: zvectorlabs/pgauthz
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quickstart.md
+  - Documentation:
+    - API Reference: api-reference.md
+    - Configuration: configuration.md
+    - Observability: observability.md
+    - Debugging: debugging.md
+    - Performance: performance.md
+  - Examples:
+    - Basic Authorization: examples/basic-authorization.md
+    - Condition-Based: examples/condition-based.md
+    - Performance Testing: examples/performance-testing.md
+
+plugins:
+  - search:
+      lang: en
+      separator: '[\s\-\.]+'
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: datetime
+      timezone: UTC
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zvectorlabs/pgauthz
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+
+extra_css:
+  - stylesheets/extra.css
+
+copyright: Copyright &copy; 2026 zvectorlabs inc.

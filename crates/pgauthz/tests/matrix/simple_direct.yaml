@@ -1,0 +1,55 @@
+name: "simple_direct"
+model: |
+  type user {}
+  type document {
+    relations
+      define viewer: [user]
+      define owner: [user]
+  }
+tests:
+  - name: "direct_owner_access"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "owner"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "owner"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "direct_viewer_access"
+    setup:
+      tuples:
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "user:bob"
+    assertions:
+      - type: "Check"
+        object: "document:doc2"
+        relation: "viewer"
+        subject: "user:bob"
+        allowed: true
+
+  - name: "no_access_for_stranger"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:charlie"
+        allowed: false
+
+  - name: "wrong_relation_denied"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:dave"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "owner"
+        subject: "user:dave"
+        allowed: false

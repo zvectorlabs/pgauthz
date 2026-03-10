@@ -1,0 +1,121 @@
+# Check semantics: computed userset, union, intersection, exclusion, TTU
+# (Coverage migrated from former integration_tests check_* tests)
+
+name: "check_semantics"
+model: |
+  type user {}
+  type folder {
+    relations
+      define viewer: [user]
+  }
+  type document {
+    relations
+      define viewer: [user]
+      define editor: [user]
+      define owner: [user]
+      define can_view: viewer
+      define can_view_union: viewer + editor
+      define can_edit_intersection: viewer & editor
+      define banned: [user]
+      define can_view_exclusion: viewer - banned
+      define parent: [folder]
+      define viewer_ttu: parent->viewer
+  }
+
+tests:
+  - name: "check_direct_relation"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "check_no_relation"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:bob"
+        allowed: false
+
+  - name: "check_computed_userset"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "can_view"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "check_union"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "editor"
+          subject: "user:bob"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "can_view_union"
+        subject: "user:bob"
+        allowed: true
+
+  - name: "check_intersection_denied"
+    description: "viewer only, not editor -> can_edit_intersection false"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "can_edit_intersection"
+        subject: "user:alice"
+        allowed: false
+
+  - name: "check_exclusion"
+    description: "viewer and not banned -> can_view_exclusion true"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "can_view_exclusion"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "check_ttu"
+    description: "document viewer via parent folder"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "parent"
+          subject: "folder:root"
+        - object: "folder:root"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer_ttu"
+        subject: "user:alice"
+        allowed: true

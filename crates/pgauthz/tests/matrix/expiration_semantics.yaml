@@ -1,0 +1,75 @@
+# Expiration semantics (design-level; time-based evaluation may be runtime-blocked)
+
+name: "expiration_semantics_test"
+model: |
+  type user {}
+  condition not_expired(expires_at: string, now: string) {
+    now < expires_at
+  }
+  type folder {
+    relations
+      define viewer: [user with not_expired]
+    permissions
+      define view = viewer
+  }
+  type document {
+    relations
+      define parent: [folder]
+    permissions
+      define view = parent->view
+  }
+
+tests:
+  - name: "not_expired_direct"
+    setup:
+      tuples:
+        - object: "folder:f1"
+          relation: "viewer"
+          subject: "user:alice"
+          condition: "not_expired"
+    assertions:
+      - type: "Check"
+        object: "folder:f1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+        context:
+          expires_at: "2099-01-01T00:00:00Z"
+          now: "2026-01-01T00:00:00Z"
+
+  - name: "expired_direct"
+    setup:
+      tuples:
+        - object: "folder:f2"
+          relation: "viewer"
+          subject: "user:alice"
+          condition: "not_expired"
+    assertions:
+      - type: "Check"
+        object: "folder:f2"
+        relation: "view"
+        subject: "user:alice"
+        allowed: false
+        context:
+          expires_at: "2020-01-01T00:00:00Z"
+          now: "2026-01-01T00:00:00Z"
+
+  - name: "expiration_through_ttu"
+    setup:
+      tuples:
+        - object: "folder:f3"
+          relation: "viewer"
+          subject: "user:bob"
+          condition: "not_expired"
+        - object: "document:doc1"
+          relation: "parent"
+          subject: "folder:f3"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+        context:
+          expires_at: "2099-01-01T00:00:00Z"
+          now: "2026-01-01T00:00:00Z"

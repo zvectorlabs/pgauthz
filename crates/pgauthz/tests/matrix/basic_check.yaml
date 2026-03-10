@@ -1,0 +1,28 @@
+name: "basic_check"
+model: |
+  type user {}
+  type document {
+    relations
+      define viewer: [user]
+  }
+tests:
+  - name: "allow_viewer"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "deny_non_viewer"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:bob"
+        allowed: false

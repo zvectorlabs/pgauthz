@@ -1,0 +1,55 @@
+[package]
+name = "pgauthz"
+version = "0.1.0"
+edition = "2024"
+description = "Postgres extension for authz — pgauthz_check, pgauthz_write_relationships, etc."
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "pgrx_embed_pgauthz"
+path = "./src/bin/pgrx_embed.rs"
+
+[[bench]]
+name = "check_bench"
+harness = false
+
+[[bench]]
+name = "check_bench_pg"
+harness = false
+
+[features]
+default = ["pg16"]
+pg16 = ["pgrx/pg16"]
+pg_test = ["uuid"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+pgrx = { version = "0.17", default-features = false, features = ["pg16"] }
+authz-core = { path = "../../../authz-core" }
+authz-datastore-pgx = { path = "../authz-datastore-pgx", features = ["pgx"] }
+pollster = "0.3"
+tokio = { version = "1", features = ["sync", "rt-multi-thread"] }
+moka = { version = "0.12", features = ["sync"] }
+ulid = "1.1"
+uuid = { version = "1.0", features = ["v4"], optional = true }
+serde_yaml = "0.9"
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+opentelemetry = "0.21"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["grpc-tonic", "http-proto"] }
+tracing-opentelemetry = "0.22"
+
+[dev-dependencies]
+pgrx-tests = { version = "0.17", default-features = false, features = ["pg16"] }
+pgrx = { version = "0.17", default-features = false, features = ["pg16"] }
+uuid = { version = "1.0", features = ["v4"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+async-trait = "0.1"
+postgres = { version = "0.19", features = ["with-uuid-1"] }

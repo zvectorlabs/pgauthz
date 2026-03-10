@@ -1,0 +1,309 @@
+# Set operations precedence and associativity test matrix
+# Tests operator precedence: + (union), & (intersection), - (exclusion)
+
+name: "setops_precedence_test"
+model: |
+  type user {}
+  type document {
+    relations
+      define first: [user]
+      define second: [user]
+      define third: [user]
+      define fourth: [user]
+    permissions
+      define union_simple = first + second
+      define intersection_simple = first & second
+      define exclusion_simple = first - second
+      define mixed_precedence1 = first + second & third
+      define mixed_precedence2 = first & second + third
+      define mixed_precedence3 = first - second + third
+      define mixed_precedence4 = first + second - third
+      define mixed_precedence5 = first & second - third
+  }
+
+tests:
+  # Simple union tests
+  - name: "union_simple_allowed"
+    description: "Simple union should allow if either relation allows"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "union_simple"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "union_simple_both"
+    description: "Union should allow if both relations allow"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "union_simple"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "union_simple_neither"
+    description: "Union should deny if neither relation allows"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "union_simple"
+        subject: "user:alice"
+        allowed: false
+
+  # Simple intersection tests
+  - name: "intersection_simple_both"
+    description: "Intersection should allow only if both relations allow"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "intersection_simple"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "intersection_simple_one"
+    description: "Intersection should deny if only one relation allows"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "intersection_simple"
+        subject: "user:alice"
+        allowed: false
+
+  # Simple exclusion tests
+  - name: "exclusion_simple_base_only"
+    description: "Exclusion should allow if only base allows"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "exclusion_simple"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "exclusion_simple_both"
+    description: "Exclusion should deny if both base and subtract allow"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "exclusion_simple"
+        subject: "user:alice"
+        allowed: false
+
+  # Mixed precedence tests
+  - name: "mixed_precedence_union_over_intersection"
+    description: "Union should have higher precedence than intersection"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence1"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "mixed_precedence_intersection_over_union"
+    description: "Intersection should have higher precedence than union in this context"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence2"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "mixed_precedence_exclusion_over_union"
+    description: "Exclusion should have higher precedence than union"
+    # mixed_precedence3 = first - second + third
+    # Evaluation: first - (second + third) = true - (true + true) = true - true = false
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence3"
+        subject: "user:alice"
+        allowed: false
+
+  - name: "mixed_precedence_union_over_exclusion"
+    description: "Union should have higher precedence than exclusion"
+    # mixed_precedence4 = first + second - third
+    # Evaluation: (first + second) - third = (true + true) - true = true - true = false
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence4"
+        subject: "user:alice"
+        allowed: false
+
+  - name: "mixed_precedence_intersection_over_exclusion"
+    description: "Intersection should have higher precedence than exclusion"
+    # mixed_precedence5 = first & second - third
+    # Evaluation: (first & second) - third = (true & true) - true = true - true = false
+    # Exclusion semantics: ALLOWED if base=ALLOWED and subtract=DENIED (boolean logic)
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence5"
+        subject: "user:alice"
+        allowed: false
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence5"
+        subject: "user:bob"
+        allowed: false
+
+  # Complex scenarios
+  - name: "complex_mixed_operations"
+    description: "Complex mixed operations with multiple users"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "second"
+          subject: "user:bob"
+        - object: "document:doc1"
+          relation: "third"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "fourth"
+          subject: "user:bob"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence1"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence2"
+        subject: "user:bob"
+        allowed: false
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence4"
+        subject: "user:alice"
+        allowed: false
+      - type: "Check"
+        object: "document:doc1"
+        relation: "mixed_precedence5"
+        subject: "user:bob"
+        allowed: false
+
+  # Edge cases
+  - name: "empty_relations_in_operations"
+    description: "Operations with empty relations should handle gracefully"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "first"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "intersection_simple"
+        subject: "user:alice"
+        allowed: false
+      - type: "Check"
+        object: "document:doc1"
+        relation: "union_simple"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "exclusion_simple"
+        subject: "user:alice"
+        allowed: true

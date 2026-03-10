@@ -1,0 +1,67 @@
+# ListSubjects assertion semantics (expected to be runner-blocked in v1)
+
+name: "list_subjects_semantics_test"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user]
+  }
+  type document {
+    relations
+      define viewer: [user | group#member]
+      define editor: [user]
+    permissions
+      define view = viewer + editor
+  }
+
+tests:
+  - name: "list_subjects_user_and_group"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "group:eng#member"
+    assertions:
+      - type: "ListSubjects"
+        object: "document:doc1"
+        relation: "viewer"
+        subject_type: "user"
+        subjects:
+          - "alice"
+      - type: "ListSubjects"
+        object: "document:doc1"
+        relation: "viewer"
+        subject_type: "group"
+        subjects:
+          - "eng#member"
+
+  - name: "list_subjects_permission_view"
+    setup:
+      tuples:
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "user:bob"
+        - object: "document:doc2"
+          relation: "editor"
+          subject: "user:carol"
+    assertions:
+      - type: "ListSubjects"
+        object: "document:doc2"
+        relation: "view"
+        subject_type: "user"
+        subjects:
+          - "bob"
+          - "carol"
+
+  - name: "list_subjects_empty"
+    description: "Object with no viewers returns empty list"
+    assertions:
+      - type: "ListSubjects"
+        object: "document:doc99"
+        relation: "viewer"
+        subject_type: "user"
+        subjects: []

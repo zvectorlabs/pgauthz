@@ -1,0 +1,27 @@
+{
+  "id": "policy-evolution",
+  "name": "Policy Evolution",
+  "version": "1.0.0",
+  "description": "Learn how to evolve authorization policies as your business needs change. Covers versioning, migration strategies, and best practices for policy updates.",
+  "author": "pgauthz team",
+  "license": "MIT",
+  "dependencies": ["pgauthz-core", "postgresql-16"],
+  "tags": ["policy", "evolution", "versioning", "migration", "schema"],
+  "download_url": "https://skills.pgauthz.dev/policy-evolution/skill.json",
+  "documentation_url": "https://docs.pgauthz.dev/skills/policy-evolution",
+  "repository_url": "https://github.com/your-org/pgauthz-skills",
+  "difficulty": "intermediate",
+  "estimated_time": "30 minutes",
+  "prerequisites": [
+    "Basic understanding of pgauthz",
+    "Familiarity with SQL",
+    "Understanding of authorization concepts"
+  ],
+  "learning_outcomes": [
+    "Understand the complete policy replacement model",
+    "Learn how to add new types, relations, and permissions",
+    "Implement policy versioning strategies",
+    "Handle relationship migrations during policy changes",
+    "Apply best practices for policy management"
+  ]
+}

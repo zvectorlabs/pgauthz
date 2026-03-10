@@ -1,0 +1,70 @@
+# Conditions and context semantics (design-level; context handling may be runtime-blocked)
+
+name: "conditions_and_context_test"
+model: |
+  type user {}
+  condition business_hours(hour: int, day: string) {
+    hour >= 9 && hour <= 17 && day != "saturday" && day != "sunday"
+  }
+  condition ip_whitelist(allowed_ips: list<string>, current_ip: string) {
+    current_ip in allowed_ips
+  }
+  type document {
+    relations
+      define viewer: [user with business_hours]
+      define editor: [user with ip_whitelist]
+    permissions
+      define view = viewer + editor
+  }
+
+tests:
+  - name: "condition_business_hours_true"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+          condition: "business_hours"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+        context:
+          hour: 10
+          day: "monday"
+
+  - name: "condition_business_hours_false"
+    setup:
+      tuples:
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "user:alice"
+          condition: "business_hours"
+    assertions:
+      - type: "Check"
+        object: "document:doc2"
+        relation: "view"
+        subject: "user:alice"
+        allowed: false
+        context:
+          hour: 22
+          day: "monday"
+
+  - name: "condition_ip_whitelist"
+    setup:
+      tuples:
+        - object: "document:doc3"
+          relation: "editor"
+          subject: "user:bob"
+          condition: "ip_whitelist"
+    assertions:
+      - type: "Check"
+        object: "document:doc3"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+        context:
+          allowed_ips: ["10.0.0.1", "10.0.0.2"]
+          current_ip: "10.0.0.1"

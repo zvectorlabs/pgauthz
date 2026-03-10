@@ -1,0 +1,76 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-02-24T15:00:00Z",
+  "skills": [
+    {
+      "id": "authorization-check",
+      "name": "Authorization Check Pattern",
+      "version": "1.0.0",
+      "description": "Implement authorization checks in your application with best practices",
+      "author": "pgauthz Team",
+      "license": "MIT",
+      "dependencies": ["pgauthz-core", "postgresql-16"],
+      "tags": ["authorization", "check", "pattern"],
+      "download_url": "https://skills.pgauthz.dev/authorization-check/skill.json",
+      "documentation_url": "https://docs.pgauthz.dev/skills/authorization-check",
+      "repository_url": "https://github.com/your-org/pgauthz-skills",
+      "agent_types": ["code-assistant", "debugging-agent"]
+    },
+    {
+      "id": "policy-validation",
+      "name": "Policy Validation",
+      "version": "1.0.0",
+      "description": "Validate authorization policies before deployment to catch errors early",
+      "author": "pgauthz Team",
+      "license": "MIT",
+      "dependencies": ["pgauthz-core"],
+      "tags": ["policy", "validation", "testing"],
+      "download_url": "https://skills.pgauthz.dev/policy-validation/skill.json",
+      "documentation_url": "https://docs.pgauthz.dev/skills/policy-validation",
+      "repository_url": "https://github.com/your-org/pgauthz-skills",
+      "agent_types": ["code-assistant", "documentation-bot"]
+    },
+    {
+      "id": "cache-optimization",
+      "name": "Cache Optimization",
+      "version": "1.0.0",
+      "description": "Optimize cache configuration for your specific workload patterns",
+      "author": "pgauthz Team",
+      "license": "MIT",
+      "dependencies": ["pgauthz-core", "opentelemetry"],
+      "tags": ["cache", "performance", "optimization"],
+      "download_url": "https://skills.pgauthz.dev/cache-optimization/skill.json",
+      "documentation_url": "https://docs.pgauthz.dev/skills/cache-optimization",
+      "repository_url": "https://github.com/your-org/pgauthz-skills",
+      "agent_types": ["monitoring-agent", "debugging-agent"]
+    },
+    {
+      "id": "monitoring-setup",
+      "name": "Monitoring Setup",
+      "version": "1.0.0",
+      "description": "Set up OpenTelemetry monitoring, metrics, and alerts for production",
+      "author": "pgauthz Team",
+      "license": "MIT",
+      "dependencies": ["pgauthz-core", "opentelemetry", "prometheus"],
+      "tags": ["monitoring", "observability", "metrics"],
+      "download_url": "https://skills.pgauthz.dev/monitoring-setup/skill.json",
+      "documentation_url": "https://docs.pgauthz.dev/skills/monitoring-setup",
+      "repository_url": "https://github.com/your-org/pgauthz-skills",
+      "agent_types": ["monitoring-agent"]
+    },
+    {
+      "id": "troubleshooting",
+      "name": "Troubleshooting Guide",
+      "version": "1.0.0",
+      "description": "Debug common issues and resolve authorization problems",
+      "author": "pgauthz Team",
+      "license": "MIT",
+      "dependencies": ["pgauthz-core"],
+      "tags": ["debugging", "troubleshooting", "support"],
+      "download_url": "https://skills.pgauthz.dev/troubleshooting/skill.json",
+      "documentation_url": "https://docs.pgauthz.dev/skills/troubleshooting",
+      "repository_url": "https://github.com/your-org/pgauthz-skills",
+      "agent_types": ["debugging-agent", "documentation-bot"]
+    }
+  ]
+}

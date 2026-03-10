@@ -1,0 +1,82 @@
+name: "model_operations"
+model: |
+  type user {}
+  type document {
+    relations
+      define viewer: [user]
+      define editor: [user]
+      define owner: [user]
+  }
+tests:
+  - name: "basic_model_validation"
+    assertions:
+      - type: "Model"
+        valid: true
+
+  - name: "basic_authorization_with_model"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "editor"
+          subject: "user:bob"
+        - object: "document:doc1"
+          relation: "owner"
+          subject: "user:charlie"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "editor"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "owner"
+        subject: "user:charlie"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "viewer"
+        subject: "user:dave"
+        allowed: false
+
+  - name: "complex_permission_hierarchy"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "owner"
+          subject: "user:alice"
+        - object: "document:doc2"
+          relation: "editor"
+          subject: "user:bob"
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "user:charlie"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "owner"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc1"
+        relation: "editor"
+        subject: "user:alice"
+        allowed: false  # alice is owner, not editor
+      - type: "Check"
+        object: "document:doc2"
+        relation: "editor"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "document:doc2"
+        relation: "viewer"
+        subject: "user:charlie"
+        allowed: true

@@ -1,0 +1,25 @@
+{
+  "name": "pgauthz-docs",
+  "version": "1.0.0",
+  "description": "pgauthz documentation and web serving infrastructure",
+  "private": true,
+  "scripts": {
+    "docs:dev": "mkdocs serve",
+    "docs:build": "mkdocs build",
+    "docs:deploy": "mkdocs gh-deploy"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/pgauthz.git"
+  },
+  "keywords": [
+    "authorization",
+    "zanzibar",
+    "postgresql",
+    "documentation"
+  ],
+  "author": "pgauthz Team",
+  "license": "MIT"
+}

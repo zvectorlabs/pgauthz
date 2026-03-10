@@ -1,0 +1,97 @@
+# Identifier edge cases test matrix
+
+name: "identifier_edgecases_test"
+model: |
+  type user {}
+  type document {
+    relations
+      define viewer: [user]
+      define editor: [user]
+      define owner: [user]
+    permissions
+      define view = viewer + editor + owner
+  }
+
+tests:
+  - name: "hyphenated_ids"
+    setup:
+      tuples:
+        - object: "document:doc-with-hyphen"
+          relation: "viewer"
+          subject: "user:user-with-hyphen"
+    assertions:
+      - type: "Check"
+        object: "document:doc-with-hyphen"
+        relation: "view"
+        subject: "user:user-with-hyphen"
+        allowed: true
+
+  - name: "underscored_ids"
+    setup:
+      tuples:
+        - object: "document:doc_with_underscore"
+          relation: "editor"
+          subject: "user:user_with_underscore"
+    assertions:
+      - type: "Check"
+        object: "document:doc_with_underscore"
+        relation: "view"
+        subject: "user:user_with_underscore"
+        allowed: true
+
+  - name: "numeric_ids"
+    setup:
+      tuples:
+        - object: "document:1234567890"
+          relation: "viewer"
+          subject: "user:9876543210"
+    assertions:
+      - type: "Check"
+        object: "document:1234567890"
+        relation: "view"
+        subject: "user:9876543210"
+        allowed: true
+
+  - name: "mixed_case_ids"
+    setup:
+      tuples:
+        - object: "document:DocCamelCase"
+          relation: "owner"
+          subject: "user:UserMixedCase"
+    assertions:
+      - type: "Check"
+        object: "document:DocCamelCase"
+        relation: "view"
+        subject: "user:UserMixedCase"
+        allowed: true
+
+  - name: "long_ids"
+    setup:
+      tuples:
+        - object: "document:veryveryveryveryveryveryveryveryveryveryveryveryverylongid"
+          relation: "viewer"
+          subject: "user:veryveryveryveryveryveryveryveryveryveryveryveryverylonguserid"
+    assertions:
+      - type: "Check"
+        object: "document:veryveryveryveryveryveryveryveryveryveryveryveryverylongid"
+        relation: "view"
+        subject: "user:veryveryveryveryveryveryveryveryveryveryveryveryverylonguserid"
+        allowed: true
+
+  - name: "identifier_isolation"
+    setup:
+      tuples:
+        - object: "document:doc-1"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc-1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc-2"
+        relation: "view"
+        subject: "user:alice"
+        allowed: false

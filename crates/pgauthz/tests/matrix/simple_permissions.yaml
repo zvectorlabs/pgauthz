@@ -1,0 +1,228 @@
+name: "simple_permissions"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user]
+  }
+  type document {
+    relations
+      define owner: [user]
+      define editor: [user]
+      define viewer: [user | group#member]
+      define parent: [folder]
+    permissions
+      define view = viewer + parent->view
+      define edit = editor + owner
+      define delete = owner
+  }
+  type folder {
+    relations
+      define owner: [user]
+      define parent: [folder]
+    permissions
+      define view = owner + parent->view
+  }
+  type organization {
+    relations
+      define billing_admin: [user]
+      define member: [user]
+      define blocked: [user]
+    permissions
+      define manage_payment = billing_admin
+      define view_invoices = billing_admin + member
+  }
+  type invoice {
+    relations
+      define organization: [organization]
+    permissions
+      define view = organization->view_invoices
+      define pay = organization->manage_payment
+  }
+tests:
+  - name: "direct_owner_can_delete"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "owner"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "delete"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "direct_editor_can_edit"
+    setup:
+      tuples:
+        - object: "document:doc2"
+          relation: "editor"
+          subject: "user:bob"
+    assertions:
+      - type: "Check"
+        object: "document:doc2"
+        relation: "edit"
+        subject: "user:bob"
+        allowed: true
+
+  - name: "group_member_can_view"
+    setup:
+      tuples:
+        - object: "group:eng"
+          relation: "member"
+          subject: "user:carol"
+        - object: "document:doc3"
+          relation: "viewer"
+          subject: "group:eng#member"
+    assertions:
+      - type: "Check"
+        object: "document:doc3"
+        relation: "view"
+        subject: "user:carol"
+        allowed: true
+
+  - name: "owner_can_also_edit_via_permission"
+    setup:
+      tuples:
+        - object: "document:doc4"
+          relation: "owner"
+          subject: "user:dave"
+    assertions:
+      - type: "Check"
+        object: "document:doc4"
+        relation: "edit"
+        subject: "user:dave"
+        allowed: true
+
+  - name: "stranger_cannot_view"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:eve"
+        allowed: false
+
+  # Permission-to-Permission Traversal Tests
+  - name: "permission_to_permission_traversal"
+    description: "Test permission-to-permission traversal: organization->view_invoices"
+    setup:
+      tuples:
+        - object: "organization:acme"
+          relation: "billing_admin"
+          subject: "user:alice"
+        - object: "organization:acme"
+          relation: "member"
+          subject: "user:bob"
+        - object: "invoice:inv1"
+          relation: "organization"
+          subject: "organization:acme"
+    assertions:
+      - type: "Check"
+        object: "invoice:inv1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "invoice:inv1"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+
+  - name: "permission_to_permission_with_exclusion"
+    description: "Test permission-to-permission with exclusion: organization->manage_payment"
+    setup:
+      tuples:
+        - object: "organization:acme"
+          relation: "billing_admin"
+          subject: "user:alice"
+        - object: "organization:acme"
+          relation: "member"
+          subject: "user:bob"
+        - object: "organization:acme"
+          relation: "blocked"
+          subject: "user:bob"
+        - object: "invoice:inv1"
+          relation: "organization"
+          subject: "organization:acme"
+    assertions:
+      - type: "Check"
+        object: "invoice:inv1"
+        relation: "pay"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "invoice:inv1"
+        relation: "pay"
+        subject: "user:bob"
+        allowed: false
+
+  - name: "nested_permission_traversal"
+    description: "Test nested permission traversal: folder->view + document->view"
+    setup:
+      tuples:
+        - object: "folder:root"
+          relation: "owner"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "parent"
+          subject: "folder:root"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+
+  # Recursive Permission Tests
+  - name: "recursive_folder_hierarchy"
+    description: "Test recursive folder hierarchy: folder->parent->viewer"
+    setup:
+      tuples:
+        - object: "folder:root"
+          relation: "owner"
+          subject: "user:alice"
+        - object: "folder:sub1"
+          relation: "parent"
+          subject: "folder:root"
+        - object: "folder:sub2"
+          relation: "parent"
+          subject: "folder:sub1"
+        - object: "document:doc1"
+          relation: "parent"
+          subject: "folder:sub2"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+
+  - name: "deep_recursive_hierarchy"
+    description: "Test deep recursive hierarchy with depth limits"
+    setup:
+      tuples:
+        - object: "folder:level5"
+          relation: "owner"
+          subject: "user:alice"
+        - object: "folder:level4"
+          relation: "parent"
+          subject: "folder:level5"
+        - object: "folder:level3"
+          relation: "parent"
+          subject: "folder:level4"
+        - object: "folder:level2"
+          relation: "parent"
+          subject: "folder:level3"
+        - object: "folder:level1"
+          relation: "parent"
+          subject: "folder:level2"
+        - object: "document:doc1"
+          relation: "parent"
+          subject: "folder:level1"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true

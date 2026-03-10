@@ -1,0 +1,7 @@
+[target.'cfg(target_os="macos")']
+# Postgres symbols won't be available until runtime
+rustflags = ["-Clink-arg=-Wl,-undefined,dynamic_lookup"]
+
+# Prefer GNU ld on Linux to avoid lld Bus error when linking pgrx extensions
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-Clink-arg=-fuse-ld=bfd"]

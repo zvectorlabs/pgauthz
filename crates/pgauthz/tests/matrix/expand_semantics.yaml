@@ -1,0 +1,54 @@
+# Expand assertion semantics (expected to be runner-blocked in v1)
+
+name: "expand_semantics_test"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user]
+  }
+  type document {
+    relations
+      define viewer: [user | group#member]
+      define editor: [user]
+    permissions
+      define view = viewer + editor
+  }
+
+tests:
+  - name: "expand_direct_and_group"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "group:eng#member"
+        - object: "group:eng"
+          relation: "member"
+          subject: "user:bob"
+    assertions:
+      - type: "Expand"
+        object: "document:doc1"
+        relation: "viewer"
+        subjects:
+          - "user:alice"
+          - "group:eng#member"
+
+  - name: "expand_permission_union"
+    setup:
+      tuples:
+        - object: "document:doc2"
+          relation: "viewer"
+          subject: "user:carol"
+        - object: "document:doc2"
+          relation: "editor"
+          subject: "user:dave"
+    assertions:
+      - type: "Expand"
+        object: "document:doc2"
+        relation: "view"
+        subjects:
+          - "user:carol"
+          - "user:dave"

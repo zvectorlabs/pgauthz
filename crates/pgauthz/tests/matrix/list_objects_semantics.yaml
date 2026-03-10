@@ -1,0 +1,76 @@
+# ListObjects assertion semantics (expected to be runner-blocked in v1)
+
+name: "list_objects_semantics_test"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user]
+  }
+  type document {
+    relations
+      define viewer: [user | group#member]
+      define editor: [user]
+      define owner: [user]
+    permissions
+      define view = viewer + editor + owner
+  }
+
+tests:
+  - name: "list_objects_direct_and_owner"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:alice"
+        - object: "document:doc2"
+          relation: "owner"
+          subject: "user:alice"
+        - object: "document:doc3"
+          relation: "editor"
+          subject: "user:bob"
+    assertions:
+      - type: "ListObjects"
+        subject: "user:alice"
+        relation: "view"
+        object_type: "document"
+        objects:
+          - "doc1"
+          - "doc2"
+
+  - name: "list_objects_via_group"
+    description: "List objects accessible through group membership"
+    setup:
+      tuples:
+        - object: "document:doc4"
+          relation: "viewer"
+          subject: "group:eng#member"
+        - object: "group:eng"
+          relation: "member"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "group:eng"
+        relation: "member"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc4"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "ListObjects"
+        subject: "user:alice"
+        relation: "view"
+        object_type: "document"
+        objects:
+          - "doc4"
+
+  - name: "list_objects_empty"
+    description: "Subject with no tuples gets empty list"
+    assertions:
+      - type: "ListObjects"
+        subject: "user:charlie"
+        relation: "view"
+        object_type: "document"
+        objects: []

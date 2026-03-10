@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/authz-datastore-pgx",
+    "crates/pgauthz",
+]
+
+[package]
+name = "pgauthz-workspace"
+version = "0.1.0"
+edition = "2024"
+description = "pgauthz workspace root — integration tests"
+
+[dev-dependencies]
+authz-core = { path = "../authz-core" }
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

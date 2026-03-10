@@ -1,0 +1,211 @@
+# Wildcard semantics test matrix
+# Tests wildcard subject patterns and their interaction with specific users
+
+name: "wildcard_semantics_test"
+model: |
+  type user {}
+  type group {
+    relations
+      define member: [user]
+  }
+  type document {
+    relations
+      define viewer: [user | user:*]
+      define editor: [user:*]
+      define owner: [user]
+    permissions
+      define view = viewer
+      define edit = editor
+      define delete = owner
+  }
+  type folder {
+    relations
+      define viewer: [user | user:*]
+      define owner: [user]
+    permissions
+      define view = viewer
+  }
+
+tests:
+  # Basic wildcard access
+  - name: "wildcard_viewer_access"
+    description: "Wildcard user:* should have viewer access"
+    setup:
+      tuples:
+        - object: "document:doc1"
+          relation: "viewer"
+          subject: "user:*"
+    assertions:
+      - type: "Check"
+        object: "document:doc1"
+        relation: "view"
+        subject: "user:anyone"
+        allowed: true
+
+  # Wildcard editor access
+  - name: "wildcard_editor_access"
+    description: "Wildcard user:* should have editor access"
+    setup:
+      tuples:
+        - object: "document:doc_editor"
+          # separate object to avoid tuple carry-over across test cases
+          # in current matrix runner implementation
+          relation: "editor"
+          subject: "user:*"
+    assertions:
+      - type: "Check"
+        object: "document:doc_editor"
+        relation: "edit"
+        subject: "user:someone"
+        allowed: true
+
+  # Specific user with wildcard present
+  - name: "specific_user_with_wildcard"
+    description: "Specific user should have access when wildcard is also present"
+    setup:
+      tuples:
+        - object: "document:doc_wildcard_mix"
+          relation: "editor"
+          subject: "user:*"
+        - object: "document:doc_wildcard_mix"
+          relation: "viewer"
+          subject: "user:*"
+        - object: "document:doc_wildcard_mix"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_wildcard_mix"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc_wildcard_mix"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+
+  # No wildcard, specific user only
+  - name: "specific_user_only"
+    description: "Specific user should have access without wildcard"
+    setup:
+      tuples:
+        - object: "document:doc_specific_only"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_specific_only"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc_specific_only"
+        relation: "view"
+        subject: "user:bob"
+        allowed: false
+
+  # Wildcard with intersection (blocked by runner - will be classified in Phase 2)
+  - name: "wildcard_with_intersection"
+    description: "Wildcard combined with intersection - currently blocked"
+    setup:
+      tuples:
+        - object: "document:doc_intersection"
+          relation: "viewer"
+          subject: "user:*"
+        - object: "document:doc_intersection"
+          relation: "editor"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_intersection"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      # This would require intersection: viewer & editor
+      # - type: "Check"
+      #   object: "document:doc_intersection"
+      #   relation: "view_and_edit"
+      #   subject: "user:bob"
+      #   allowed: false
+
+  # Folder wildcard access
+  - name: "folder_wildcard_access"
+    description: "Wildcard access to folder"
+    setup:
+      tuples:
+        - object: "folder:folder_wildcard"
+          relation: "viewer"
+          subject: "user:*"
+    assertions:
+      - type: "Check"
+        object: "folder:folder_wildcard"
+        relation: "view"
+        subject: "user:anyone"
+        allowed: true
+
+  # Mixed wildcard and specific in different relations
+  - name: "mixed_wildcard_specific_relations"
+    description: "Wildcard in one relation, specific in another"
+    setup:
+      tuples:
+        - object: "document:doc_mixed"
+          relation: "viewer"
+          subject: "user:*"
+        - object: "document:doc_mixed"
+          relation: "owner"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_mixed"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
+      - type: "Check"
+        object: "document:doc_mixed"
+        relation: "delete"
+        subject: "user:bob"
+        allowed: false
+      - type: "Check"
+        object: "document:doc_mixed"
+        relation: "delete"
+        subject: "user:alice"
+        allowed: true
+
+  # No access without wildcard or specific
+  - name: "no_access_without_wildcard"
+    description: "No access when neither wildcard nor specific user present"
+    setup:
+      tuples:
+        - object: "document:doc_no_wildcard"
+          relation: "viewer"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_no_wildcard"
+        relation: "view"
+        subject: "user:bob"
+        allowed: false
+
+  # Wildcard with group membership (complex scenario)
+  - name: "wildcard_with_group_membership"
+    description: "Wildcard access combined with group membership patterns"
+    setup:
+      tuples:
+        - object: "document:doc_group_mix"
+          relation: "viewer"
+          subject: "user:*"
+        - object: "group:eng"
+          relation: "member"
+          subject: "user:alice"
+    assertions:
+      - type: "Check"
+        object: "document:doc_group_mix"
+        relation: "view"
+        subject: "user:alice"
+        allowed: true
+      - type: "Check"
+        object: "document:doc_group_mix"
+        relation: "view"
+        subject: "user:bob"
+        allowed: true
