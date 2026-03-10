@@ -220,8 +220,8 @@ When you evolve a policy:
 
 ```sql
 -- If you rename 'viewer' to 'reader', migrate relationships:
-UPDATE authz.relationship_tuple 
-SET relation = 'reader' 
+UPDATE authz.tuple
+SET relation = 'reader'
 WHERE relation = 'viewer';
 ```
 

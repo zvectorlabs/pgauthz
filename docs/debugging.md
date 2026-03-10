@@ -49,19 +49,19 @@ SELECT pgauthz_expand('document', 'doc1', 'viewer');
 1. **Missing Relation:**
 ```sql
 -- Check if relation exists
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', 'viewer', 'user', 'alice');
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', 'viewer', 'user', 'alice');
 ```
 
 2. **Wrong Relation Name:**
 ```sql
 -- List all relations for the object
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', NULL, NULL, NULL);
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', NULL, NULL, NULL);
 ```
 
 3. **Policy Mismatch:**
 ```sql
 -- View current policy
-SELECT * FROM pgauthz_read_latest_model();
+SELECT * FROM pgauthz_read_latest_policy();
 ```
 
 4. **Condition Not Met:**
@@ -366,13 +366,13 @@ Inspect stored relations:
 
 ```sql
 -- All relations for an object
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', NULL, NULL, NULL);
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', NULL, NULL, NULL);
 
 -- All relations for a subject
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, NULL, 'user', 'alice');
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, NULL, 'user', 'alice');
 
 -- Specific relation
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', 'viewer', NULL, NULL);
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', 'viewer', NULL, NULL);
 ```
 
 ### 3. Enable Debug Logging
@@ -415,10 +415,10 @@ Ensure you're using the latest policy:
 
 ```sql
 -- List all policies
-SELECT id, LEFT(definition, 100) FROM pgauthz_list_models(10, NULL);
+SELECT id, LEFT(definition, 100) FROM pgauthz_list_policies(10, NULL);
 
 -- Get latest
-SELECT * FROM pgauthz_read_latest_model();
+SELECT * FROM pgauthz_read_latest_policy();
 ```
 
 ### 6. Verify Context Variables
@@ -512,10 +512,10 @@ If you're still stuck:
    - [Performance Guide](performance.md)
 
 2. **Search Issues:**
-   - [GitHub Issues](https://github.com/your-org/pgauthz/issues)
+   - [GitHub Issues](https://github.com/zvectorlabs/pgauthz/issues)
 
 3. **Ask for Help:**
-   - [GitHub Discussions](https://github.com/your-org/pgauthz/discussions)
+   - [GitHub Discussions](https://github.com/zvectorlabs/pgauthz/discussions)
 
 4. **Report a Bug:**
    Include:

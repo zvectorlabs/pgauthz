@@ -110,10 +110,10 @@ Query the relations you've created:
 
 ```sql
 -- View all relations for doc1
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', NULL, NULL, NULL);
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', NULL, NULL, NULL);
 
 -- View all relations for a specific user
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, NULL, 'user', 'alice');
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, NULL, 'user', 'alice');
 ```
 
 ## Advanced Example: Hierarchical Permissions
@@ -236,10 +236,10 @@ View the current authorization policy:
 
 ```sql
 -- Get the latest policy
-SELECT * FROM pgauthz_read_latest_model();
+SELECT * FROM pgauthz_read_latest_policy();
 
 -- List all policies (with pagination)
-SELECT * FROM pgauthz_list_models(10, NULL);
+SELECT * FROM pgauthz_list_policies(10, NULL);
 ```
 
 ## Next Steps
@@ -327,5 +327,5 @@ See the [Performance Guide](performance.md) for more optimization tips.
 ## Getting Help
 
 - **[Debugging Guide](debugging.md)** - Troubleshooting common issues
-- **[GitHub Issues](https://github.com/your-org/pgauthz/issues)** - Report bugs
-- **[GitHub Discussions](https://github.com/your-org/pgauthz/discussions)** - Ask questions
+- **[GitHub Issues](https://github.com/zvectorlabs/pgauthz/issues)** - Report bugs
+- **[GitHub Discussions](https://github.com/zvectorlabs/pgauthz/discussions)** - Ask questions

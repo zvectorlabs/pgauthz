@@ -17,6 +17,7 @@ jobs:
   build:
     name: Build (pg${{ matrix.pg }}, ${{ matrix.runner.os }})
     runs-on: ${{ matrix.runner.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -243,20 +244,21 @@ jobs:
   # ---------------------------------------------------------------------------
   # Build and push Docker images to GHCR
   #
+  # Split into two jobs to use native runners per platform (no QEMU):
+  #   docker-build  — builds each platform on its native runner, pushes by digest
+  #   docker-manifest — merges digests into a multi-platform manifest
+  #
   # Image tags pushed for each PG version:
   #   ghcr.io/zvectorlabs/pgauthz:<version>-pg<N>   (e.g. 0.2.0-pg17)
   #   ghcr.io/zvectorlabs/pgauthz:pg<N>              (latest stable for that PG)
   #   ghcr.io/zvectorlabs/pgauthz:latest             (latest stable, defaults to highest PG)
-  #
-  # Multi-platform: linux/amd64 + linux/arm64 via Docker BuildKit.
-  # Requires no extra secrets — GITHUB_TOKEN has write:packages permission.
   # ---------------------------------------------------------------------------
-  publish-docker:
-    name: Docker (pg${{ matrix.pg }})
+  docker-build:
+    name: Docker build (pg${{ matrix.pg }}, ${{ matrix.config.platform }})
     needs: build
-    runs-on: ubuntu-latest
-    # Only publish stable releases (no -rc.1 / -beta suffixes)
     if: ${{ !contains(github.ref_name, '-') }}
+    timeout-minutes: 30
+    runs-on: ${{ matrix.config.runner }}
     permissions:
       contents: read
       packages: write
@@ -264,16 +266,12 @@ jobs:
       fail-fast: false
       matrix:
         pg: ["16", "17", "18"]
-        include:
-          # highest PG version also gets the plain :latest tag
-          - pg: "18"
-            latest: true
+        config:
+          - { platform: linux/amd64, runner: ubuntu-latest }
+          - { platform: linux/arm64, runner: ubuntu-24.04-arm }
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up QEMU (for arm64 cross-build)
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -285,34 +283,81 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute image tags
-        id: tags
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          REPO="ghcr.io/zvectorlabs/pgauthz"
-          TAGS="${REPO}:${VERSION}-pg${{ matrix.pg }},${REPO}:pg${{ matrix.pg }}"
-          if [ "${{ matrix.latest }}" = "true" ]; then
-            TAGS="${TAGS},${REPO}:latest"
-          fi
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.config.platform }}
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          outputs: type=image,name=ghcr.io/zvectorlabs/pgauthz,push-by-digest=true,name-canonical=true
           build-args: |
             PG_MAJOR=${{ matrix.pg }}
             PGRX_VERSION=${{ env.PGRX_VERSION }}
-          # Cache layers in GHCR to speed up subsequent builds
-          cache-from: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }}
-          cache-to: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }},mode=max
+          cache-from: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }}-${{ matrix.config.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          cache-to: type=registry,ref=ghcr.io/zvectorlabs/pgauthz:cache-pg${{ matrix.pg }}-${{ matrix.config.platform == 'linux/amd64' && 'amd64' || 'arm64' }},mode=max
           labels: |
-            org.opencontainers.image.version=${{ steps.tags.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-pg${{ matrix.pg }}-${{ matrix.config.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-manifest:
+    name: Docker manifest (pg${{ matrix.pg }})
+    needs: docker-build
+    if: ${{ !contains(github.ref_name, '-') }}
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["16", "17", "18"]
+        include:
+          - pg: "18"
+            latest: true
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-pg${{ matrix.pg }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifest
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          REPO="ghcr.io/zvectorlabs/pgauthz"
+          TAGS="-t ${REPO}:${VERSION}-pg${{ matrix.pg }} -t ${REPO}:pg${{ matrix.pg }}"
+          if [ "${{ matrix.latest }}" = "true" ]; then
+            TAGS="${TAGS} -t ${REPO}:latest"
+          fi
+          docker buildx imagetools create ${TAGS} \
+            $(printf "${REPO}@sha256:%s " $(ls /tmp/digests/))
 

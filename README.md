@@ -56,8 +56,8 @@ SELECT pgauthz_check('document', 'doc1', 'viewer', 'user', 'alice');
 
 - **Authorization Checks**: `pgauthz_check()`, `pgauthz_check_with_context()`, `pgauthz_expand()`
 - **List Operations**: `pgauthz_list_objects()`, `pgauthz_list_subjects()`
-- **Relation Management**: `pgauthz_add_relation()`, `pgauthz_read_tuples()`
-- **Policy Management**: `pgauthz_define_policy()`, `pgauthz_read_model()`, `pgauthz_list_models()`
+- **Relation Management**: `pgauthz_add_relation()`, `pgauthz_write_relationships()`, `pgauthz_read_relationships()`
+- **Policy Management**: `pgauthz_define_policy()`, `pgauthz_read_latest_policy()`, `pgauthz_list_policies()`
 - **Change Tracking**: `pgauthz_read_changes()`
 
 ## Requirements

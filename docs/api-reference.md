@@ -252,13 +252,63 @@ SELECT pgauthz_add_relation(
 
 ---
 
-### pgauthz_read_tuples()
+### pgauthz_write_relationships()
 
-Read/query existing relations with optional filtering.
+Write (add) and/or delete relationships in a single atomic operation.
 
 **Signature:**
 ```sql
-pgauthz_read_tuples(
+pgauthz_write_relationships(
+    writes pgauthz_relationship[],
+    deletes pgauthz_relationship[]
+) RETURNS text
+```
+
+**Parameters:**
+- `writes` - Array of relationships to add
+- `deletes` - Array of relationships to remove
+
+**Returns:** Revision ID of the write operation
+
+**Example:**
+```sql
+-- Add two relationships atomically
+SELECT pgauthz_write_relationships(
+    ARRAY[
+        ROW('document', 'doc1', 'viewer', 'user', 'alice', NULL)::pgauthz_relationship,
+        ROW('document', 'doc1', 'editor', 'user', 'bob',   NULL)::pgauthz_relationship
+    ],
+    ARRAY[]::pgauthz_relationship[]
+);
+
+-- Delete a relationship
+SELECT pgauthz_write_relationships(
+    ARRAY[]::pgauthz_relationship[],
+    ARRAY[
+        ROW('document', 'doc1', 'viewer', 'user', 'charlie', NULL)::pgauthz_relationship
+    ]
+);
+
+-- Add and delete in the same call
+SELECT pgauthz_write_relationships(
+    ARRAY[ROW('document', 'doc2', 'viewer', 'user', 'dave', NULL)::pgauthz_relationship],
+    ARRAY[ROW('document', 'doc1', 'viewer', 'user', 'charlie', NULL)::pgauthz_relationship]
+);
+```
+
+**Error Codes:**
+- `22023` - Invalid parameter
+- `23514` - Relationship validation failed (invalid object type, relation, or subject type)
+
+---
+
+### pgauthz_read_relationships()
+
+Read/query existing relationships with optional filtering.
+
+**Signature:**
+```sql
+pgauthz_read_relationships(
     object_type text DEFAULT NULL,
     object_id text DEFAULT NULL,
     relation text DEFAULT NULL,
@@ -278,25 +328,25 @@ pgauthz_read_tuples(
 All parameters are optional filters:
 - `object_type` - Filter by object type
 - `object_id` - Filter by object ID
-- `relation` - Filter by relation
+- `relation` - Filter by relation name
 - `subject_type` - Filter by subject type
 - `subject_id` - Filter by subject ID
 
-**Returns:** Table of matching tuples
+**Returns:** Table of matching relationships
 
 **Example:**
 ```sql
--- Get all relations for doc1
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', NULL, NULL, NULL);
+-- Get all relationships for doc1
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', NULL, NULL, NULL);
 
--- Get all relations for user alice
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, NULL, 'user', 'alice');
+-- Get all relationships for user alice
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, NULL, 'user', 'alice');
 
--- Get all viewer relations
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, 'viewer', NULL, NULL);
+-- Get all viewer relationships
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, 'viewer', NULL, NULL);
 
--- Get all relations (no filters)
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, NULL, NULL, NULL);
+-- Get all relationships (no filters)
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, NULL, NULL, NULL);
 ```
 
 ---
@@ -317,7 +367,7 @@ pgauthz_define_policy(
 **Parameters:**
 - `definition` - Policy definition in pgauthz schema language
 
-**Returns:** Model ID of the created policy
+**Returns:** Policy ID of the created policy
 
 **Example:**
 ```sql
@@ -361,14 +411,14 @@ condition <condition_name>(<params>) {
 
 ---
 
-### pgauthz_read_model()
+### pgauthz_read_policy()
 
 Read a specific authorization policy by ID.
 
 **Signature:**
 ```sql
-pgauthz_read_model(
-    model_id text
+pgauthz_read_policy(
+    policy_id text
 ) RETURNS TABLE (
     id text,
     definition text
@@ -376,27 +426,27 @@ pgauthz_read_model(
 ```
 
 **Parameters:**
-- `model_id` - ID of the policy to read
+- `policy_id` - ID of the policy to read
 
 **Returns:** Table with policy ID and definition
 
 **Example:**
 ```sql
-SELECT * FROM pgauthz_read_model('01HQZX...');
+SELECT * FROM pgauthz_read_policy('01HQZX...');
 ```
 
 **Error Codes:**
-- `02000` - Model not found
+- `02000` - Policy not found
 
 ---
 
-### pgauthz_read_latest_model()
+### pgauthz_read_latest_policy()
 
 Read the most recently defined authorization policy.
 
 **Signature:**
 ```sql
-pgauthz_read_latest_model() RETURNS TABLE (
+pgauthz_read_latest_policy() RETURNS TABLE (
     id text,
     definition text
 )
@@ -406,21 +456,21 @@ pgauthz_read_latest_model() RETURNS TABLE (
 
 **Example:**
 ```sql
-SELECT * FROM pgauthz_read_latest_model();
+SELECT * FROM pgauthz_read_latest_policy();
 ```
 
 **Error Codes:**
-- `02000` - No models found
+- `02000` - No policies found
 
 ---
 
-### pgauthz_list_models()
+### pgauthz_list_policies()
 
 List all authorization policies with pagination.
 
 **Signature:**
 ```sql
-pgauthz_list_models(
+pgauthz_list_policies(
     page_size integer DEFAULT 100,
     continuation_token text DEFAULT NULL
 ) RETURNS TABLE (
@@ -438,10 +488,10 @@ pgauthz_list_models(
 **Example:**
 ```sql
 -- List first 10 policies
-SELECT * FROM pgauthz_list_models(10, NULL);
+SELECT * FROM pgauthz_list_policies(10, NULL);
 
 -- Get next page
-SELECT * FROM pgauthz_list_models(10, 'cursor_token_here');
+SELECT * FROM pgauthz_list_policies(10, 'cursor_token_here');
 ```
 
 ---

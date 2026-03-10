@@ -284,18 +284,10 @@ func main() {
 Remove permissions:
 
 ```sql
--- Create a tuple to delete
-WITH to_delete AS (
-  SELECT 'document'::text as object_type,
-         'doc1'::text as object_id,
-         'viewer'::text as relation,
-         'user'::text as subject_type,
-         'charlie'::text as subject_id,
-         NULL::text as condition
-)
-SELECT pgauthz_write_tuples(
-  ARRAY[]::pgauthz_tuple[],  -- no writes
-  ARRAY[(SELECT ROW(object_type, object_id, relation, subject_type, subject_id, condition)::pgauthz_tuple FROM to_delete)]
+-- Delete a relationship
+SELECT pgauthz_write_relationships(
+  ARRAY[]::pgauthz_relationship[],  -- no writes
+  ARRAY[ROW('document', 'doc1', 'viewer', 'user', 'charlie', NULL)::pgauthz_relationship]
 );
 
 -- Verify Charlie can no longer view doc1
@@ -309,13 +301,13 @@ View all current permissions:
 
 ```sql
 -- All permissions for doc1
-SELECT * FROM pgauthz_read_tuples('document', 'doc1', NULL, NULL, NULL);
+SELECT * FROM pgauthz_read_relationships('document', 'doc1', NULL, NULL, NULL);
 
 -- All permissions for alice
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, NULL, 'user', 'alice');
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, NULL, 'user', 'alice');
 
 -- All viewer permissions
-SELECT * FROM pgauthz_read_tuples(NULL, NULL, 'viewer', NULL, NULL);
+SELECT * FROM pgauthz_read_relationships(NULL, NULL, 'viewer', NULL, NULL);
 ```
 
 ## Common Patterns
