@@ -21,7 +21,9 @@ harness = false
 
 [features]
 default = ["pg16"]
-pg16 = ["pgrx/pg16"]
+pg16 = ["pgrx/pg16", "authz-datastore-pgx/pg16"]
+pg17 = ["pgrx/pg17", "authz-datastore-pgx/pg17"]
+pg18 = ["pgrx/pg18", "authz-datastore-pgx/pg18"]
 pg_test = ["uuid"]
 
 [package.metadata.docs.rs]
@@ -29,7 +31,7 @@ all-features = true
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-pgrx = { version = "0.17", default-features = false, features = ["pg16"] }
+pgrx = { version = "0.17", default-features = false }
 authz-core = "0.1.0"
 authz-datastore-pgx = { path = "../authz-datastore-pgx", features = ["pgx"] }
 pollster = "0.3"
@@ -47,8 +49,8 @@ opentelemetry-otlp = { version = "0.14", features = ["grpc-tonic", "http-proto"]
 tracing-opentelemetry = "0.22"
 
 [dev-dependencies]
-pgrx-tests = { version = "0.17", default-features = false, features = ["pg16"] }
-pgrx = { version = "0.17", default-features = false, features = ["pg16"] }
+pgrx-tests = { version = "0.17", default-features = false }
+pgrx = { version = "0.17", default-features = false }
 uuid = { version = "1.0", features = ["v4"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 async-trait = "0.1"

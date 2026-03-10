@@ -1,0 +1,256 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  CARGO_TERM_COLOR: always
+  PGRX_VERSION: "0.17.0"
+  EXTENSION_NAME: pgauthz
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build a .deb + .tar.gz for each PG version × runner
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build (pg${{ matrix.pg }}, ${{ matrix.runner.os }})
+    runs-on: ${{ matrix.runner.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["16", "17", "18"]
+        runner:
+          - { os: ubuntu-22.04,     arch: amd64 }
+          - { os: ubuntu-24.04,     arch: amd64 }
+          - { os: ubuntu-22.04-arm, arch: arm64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+          - { os: macos-14,         arch: arm64 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add PostgreSQL apt repo (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -y
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y \
+            libclang-dev clang pkg-config libssl-dev \
+            postgresql-server-dev-${{ matrix.pg }} \
+            ruby ruby-dev build-essential
+          sudo gem install --no-document fpm
+
+      - name: Install PostgreSQL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Install icu4c for pgrx source builds (keg-only, not on PKG_CONFIG_PATH by default)
+          brew install icu4c
+          ICU_PREFIX="$(brew --prefix icu4c 2>/dev/null || brew --prefix icu4c@78 2>/dev/null)"
+          echo "PKG_CONFIG_PATH=${ICU_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          # Install pre-built PostgreSQL if available for this version; pgrx will download
+          # from source as fallback (the ICU fix above covers that path too).
+          brew install postgresql@${{ matrix.pg }} || true
+          PG_BIN="/opt/homebrew/opt/postgresql@${{ matrix.pg }}/bin"
+          if [ -f "${PG_BIN}/pg_config" ]; then
+            echo "PG_CONFIG=${PG_BIN}/pg_config" >> $GITHUB_ENV
+            echo "${PG_BIN}" >> $GITHUB_PATH
+          else
+            echo "PG_CONFIG=download" >> $GITHUB_ENV
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.93"
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-pgrx
+            ~/.pgrx
+            target
+          key: ${{ runner.os }}-${{ matrix.runner.arch }}-pg${{ matrix.pg }}-pgrx${{ env.PGRX_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.runner.arch }}-pg${{ matrix.pg }}-pgrx${{ env.PGRX_VERSION }}-
+
+      - name: Install cargo-pgrx
+        run: |
+          if ! cargo pgrx --version 2>/dev/null | grep -q "${{ env.PGRX_VERSION }}"; then
+            cargo install cargo-pgrx --version ${{ env.PGRX_VERSION }} --locked
+          fi
+
+      - name: Locate pg_config (Linux)
+        if: runner.os == 'Linux'
+        run: echo "PG_CONFIG=/usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config" >> $GITHUB_ENV
+
+      - name: Init pgrx
+        run: cargo pgrx init --pg${{ matrix.pg }} ${{ env.PG_CONFIG }}
+
+      - name: Build release package
+        run: make package PG_VERSION=${{ matrix.pg }}
+
+      - name: Detect package output path
+        id: pkg
+        run: |
+          PKG_DIR=$(find target/release/pgauthz-pg${{ matrix.pg }}-* -maxdepth 0 -type d 2>/dev/null | head -1)
+          echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
+
+      - name: Determine OS slug
+        id: meta
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            . /etc/os-release
+            echo "os_slug=${ID}${VERSION_ID//.}" >> $GITHUB_OUTPUT
+          else
+            echo "os_slug=darwin" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create .tar.gz archive
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARBALL="${{ env.EXTENSION_NAME }}-${VERSION}-pg${{ matrix.pg }}-${{ steps.meta.outputs.os_slug }}-${{ matrix.runner.arch }}.tar.gz"
+          tar -czf "$TARBALL" -C "${{ steps.pkg.outputs.pkg_dir }}" .
+          echo "TARBALL=$TARBALL" >> $GITHUB_ENV
+
+      - name: Build .deb package (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARCH_DEB=$([ "${{ matrix.runner.arch }}" = "arm64" ] && echo "arm64" || echo "amd64")
+          OS_SLUG="${{ steps.meta.outputs.os_slug }}"
+          DEB_NAME="${{ env.EXTENSION_NAME }}-pg${{ matrix.pg }}_${VERSION}_${ARCH_DEB}_${OS_SLUG}.deb"
+          fpm \
+            -s dir \
+            -t deb \
+            -n "${{ env.EXTENSION_NAME }}-pg${{ matrix.pg }}" \
+            -v "${VERSION}" \
+            -a "${ARCH_DEB}" \
+            --description "Zanzibar-style authorization as a Postgres extension" \
+            --url "https://github.com/${{ github.repository }}" \
+            --license MIT \
+            --depends "postgresql-${{ matrix.pg }}" \
+            --deb-compression gz \
+            -p "$DEB_NAME" \
+            "${{ steps.pkg.outputs.pkg_dir }}/=/"
+          echo "DEB_NAME=$DEB_NAME" >> $GITHUB_ENV
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-pg${{ matrix.pg }}-${{ steps.meta.outputs.os_slug }}-${{ matrix.runner.arch }}
+          path: |
+            ${{ env.TARBALL }}
+            ${{ env.DEB_NAME }}
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release and attach all artifacts
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body: |
+            ## pgauthz ${{ github.ref_name }}
+
+            ### Supported PostgreSQL versions
+            - PostgreSQL 16, 17, 18
+
+            ### Supported platforms
+            | Platform | Arch | Format |
+            |----------|------|--------|
+            | Ubuntu 22.04 | amd64, arm64 | `.deb`, `.tar.gz` |
+            | Ubuntu 24.04 | amd64, arm64 | `.deb`, `.tar.gz` |
+            | macOS 14 (Sonoma) | arm64 | `.tar.gz` |
+
+            ### Installation
+
+            **Via .deb (Ubuntu/Debian, recommended):**
+            ```bash
+            # Example: PG17, Ubuntu 24.04, amd64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/pgauthz-pg17_<version>_amd64_ubuntu2404.deb
+            sudo dpkg -i pgauthz-pg17_*.deb
+            ```
+
+            **Via tar.gz:**
+            ```bash
+            sudo tar -xzf pgauthz-*-pg17-ubuntu2404-amd64.tar.gz -C /
+            ```
+
+            **In PostgreSQL:**
+            ```sql
+            CREATE EXTENSION pgauthz;
+            ```
+
+            See [README](https://github.com/${{ github.repository }}#readme) for full setup.
+          files: artifacts/*
+          fail_on_unmatched_files: false
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  # ---------------------------------------------------------------------------
+  # Publish to Trunk (pgt.dev) — stable releases only
+  # ---------------------------------------------------------------------------
+  publish-trunk:
+    name: Publish to Trunk
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, '-') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install trunk CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/tembo-io/trunk/main/contrib/install.sh | bash
+          echo "$HOME/.trunk/bin" >> $GITHUB_PATH
+
+      - name: Publish to Trunk
+        env:
+          TRUNK_API_TOKEN: ${{ secrets.TRUNK_API_TOKEN }}
+        run: |
+          trunk publish \
+            --name pgauthz \
+            --version "${GITHUB_REF_NAME#v}" \
+            --description "Zanzibar-style authorization as a Postgres extension" \
+            --homepage "https://github.com/${{ github.repository }}" \
+            --license MIT \
+            --pg-version 16 \
+            --pg-version 17 \
+            --pg-version 18 \
+            .

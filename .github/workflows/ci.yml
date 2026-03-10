@@ -12,24 +12,40 @@ env:
 
 jobs:
   ci:
-    name: CI
+    name: CI (pg${{ matrix.pg }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["16", "17", "18"]
+
     steps:
       - uses: actions/checkout@v4
 
+      - name: Add PostgreSQL apt repo
+        run: |
+          sudo apt-get install -y curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -y
+
       - name: Install system dependencies
         run: |
-          sudo apt-get update -y
           sudo apt-get install -y \
             libclang-dev \
             clang \
             pkg-config \
             libssl-dev \
-            postgresql-server-dev-16
+            postgresql-server-dev-${{ matrix.pg }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.93"
           components: rustfmt, clippy
 
       - name: Cache cargo
@@ -41,9 +57,9 @@ jobs:
             ~/.cargo/bin/cargo-pgrx
             ~/.pgrx
             target
-          key: ${{ runner.os }}-cargo-pgrx${{ env.PGRX_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-pg${{ matrix.pg }}-pgrx${{ env.PGRX_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-pgrx${{ env.PGRX_VERSION }}-
+            ${{ runner.os }}-pg${{ matrix.pg }}-pgrx${{ env.PGRX_VERSION }}-
 
       - name: Install cargo-pgrx
         run: |
@@ -52,7 +68,7 @@ jobs:
           fi
 
       - name: Init pgrx
-        run: cargo pgrx init --pg16 $(which pg_config)
+        run: cargo pgrx init --pg${{ matrix.pg }} /usr/lib/postgresql/${{ matrix.pg }}/bin/pg_config
 
       - name: Run CI
-        run: make ci
+        run: make ci PG_VERSION=${{ matrix.pg }}
