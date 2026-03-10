@@ -11,7 +11,7 @@ use authz_core::cache::{AuthzCache, CacheMetrics, noop_cache};
 use authz_core::error::AuthzError;
 use authz_core::model_parser::parse_dsl;
 use authz_core::resolver::CheckResult;
-use authz_core::traits::{ModelReader, RevisionReader, Tuple};
+use authz_core::traits::{PolicyReader, RevisionReader, Tuple};
 use authz_core::type_system::TypeSystem;
 use authz_datastore_pgx::PostgresDatastore;
 use moka::sync::Cache;

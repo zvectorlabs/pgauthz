@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use authz_core::error::AuthzError;
 use authz_core::tenant_schema::{ChangelogEntry, ChangelogReader};
 use authz_core::traits::{
-    AuthorizationPolicy, ModelReader, ModelWriter, Pagination, RevisionReader, Tuple, TupleFilter,
-    TupleReader, TupleWriter,
+    AuthorizationPolicy, Pagination, PolicyReader, PolicyWriter, RevisionReader, Tuple,
+    TupleFilter, TupleReader, TupleWriter,
 };
 
 /// SPI-based datastore for global model.
@@ -29,7 +29,7 @@ fn stub_err() -> AuthzError {
 
 #[cfg(not(feature = "pgx"))]
 #[async_trait]
-impl ModelReader for PostgresDatastore {
+impl PolicyReader for PostgresDatastore {
     async fn read_authorization_policy(
         &self,
         _id: &str,
@@ -51,7 +51,7 @@ impl ModelReader for PostgresDatastore {
 
 #[cfg(not(feature = "pgx"))]
 #[async_trait]
-impl ModelWriter for PostgresDatastore {
+impl PolicyWriter for PostgresDatastore {
     async fn write_authorization_policy(
         &self,
         _policy: &AuthorizationPolicy,
@@ -143,7 +143,6 @@ impl RevisionReader for PostgresDatastore {
 #[cfg(feature = "pgx")]
 mod pgx_impl {
     use super::*;
-    use authz_core;
     use authz_core::model_parser;
     use authz_core::model_validator;
     use pgrx::prelude::*;
@@ -158,7 +157,7 @@ mod pgx_impl {
     }
 
     #[async_trait]
-    impl ModelReader for PostgresDatastore {
+    impl PolicyReader for PostgresDatastore {
         async fn read_authorization_policy(
             &self,
             id: &str,
@@ -167,7 +166,7 @@ mod pgx_impl {
                 "SELECT id::text AS id, definition FROM authz.authorization_policy WHERE id = {}",
                 q(id),
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, Some(1), &[]).map_err(to_err)?;
                 if table.is_empty() {
                     return Ok(None);
@@ -197,15 +196,14 @@ mod pgx_impl {
                 Ok(id.and_then(|id| {
                     definition.map(|definition| AuthorizationPolicy { id, definition })
                 }))
-            });
-            result
+            })
         }
 
         async fn read_latest_authorization_policy(
             &self,
         ) -> Result<Option<AuthorizationPolicy>, AuthzError> {
             let sql = "SELECT id::text AS id, definition FROM authz.authorization_policy ORDER BY id DESC LIMIT 1".to_string();
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, Some(1), &[]).map_err(to_err)?;
                 if table.is_empty() {
                     return Ok(None);
@@ -216,8 +214,7 @@ mod pgx_impl {
                 Ok(id.and_then(|id| {
                     definition.map(|definition| AuthorizationPolicy { id, definition })
                 }))
-            });
-            result
+            })
         }
 
         async fn list_authorization_policies(
@@ -238,7 +235,7 @@ mod pgx_impl {
                 "SELECT id::text AS id, definition FROM authz.authorization_policy ORDER BY created_at LIMIT {} OFFSET {}",
                 limit, offset,
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, None, &[]).map_err(to_err)?;
                 let mut out = Vec::new();
                 for htup in table {
@@ -250,13 +247,12 @@ mod pgx_impl {
                     }
                 }
                 Ok(out)
-            });
-            result
+            })
         }
     }
 
     #[async_trait]
-    impl ModelWriter for PostgresDatastore {
+    impl PolicyWriter for PostgresDatastore {
         async fn write_authorization_policy(
             &self,
             policy: &AuthorizationPolicy,
@@ -363,7 +359,7 @@ mod pgx_impl {
                     where_clause,
                 )
             };
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, None, &[]).map_err(to_err)?;
                 let mut out = Vec::new();
                 for htup in table {
@@ -380,8 +376,7 @@ mod pgx_impl {
                     }
                 }
                 Ok(out)
-            });
-            result
+            })
         }
 
         async fn read_user_tuple(
@@ -400,7 +395,7 @@ mod pgx_impl {
                 q(subject_type),
                 q(subject_id),
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, Some(1), &[]).map_err(to_err)?;
                 if table.is_empty() {
                     return Ok(None);
@@ -421,8 +416,7 @@ mod pgx_impl {
                         })
                     })
                 }))
-            });
-            result
+            })
         }
 
         async fn read_userset_tuples(
@@ -437,7 +431,7 @@ mod pgx_impl {
                 q(object_id),
                 q(relation),
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, None, &[]).map_err(to_err)?;
                 let mut out = Vec::new();
                 for htup in table {
@@ -454,8 +448,7 @@ mod pgx_impl {
                     }
                 }
                 Ok(out)
-            });
-            result
+            })
         }
 
         async fn read_starting_with_user(
@@ -468,7 +461,7 @@ mod pgx_impl {
                 q(subject_type),
                 q(subject_id),
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, None, &[]).map_err(to_err)?;
                 let mut out = Vec::new();
                 for htup in table {
@@ -485,8 +478,7 @@ mod pgx_impl {
                     }
                 }
                 Ok(out)
-            });
-            result
+            })
         }
 
         async fn read_user_tuple_batch(
@@ -514,7 +506,7 @@ mod pgx_impl {
                 q(subject_id),
             );
 
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, Some(1), &[]).map_err(to_err)?;
                 if table.is_empty() {
                     return Ok(None);
@@ -535,8 +527,7 @@ mod pgx_impl {
                         })
                     })
                 }))
-            });
-            result
+            })
         }
     }
 
@@ -687,7 +678,7 @@ mod pgx_impl {
             after_ulid: Option<&str>,
             page_size: usize,
         ) -> Result<Vec<ChangelogEntry>, AuthzError> {
-            let limit = page_size.max(1).min(100);
+            let limit = page_size.clamp(1, 100);
             let ulid_cond = after_ulid
                 .map(|u| format!(" AND ulid > {}", q(u)))
                 .unwrap_or_default();
@@ -697,7 +688,7 @@ mod pgx_impl {
                 ulid_cond,
                 limit,
             );
-            let result = Spi::connect_mut(|client| {
+            Spi::connect_mut(|client| {
                 let table = client.update(&sql, None, &[]).map_err(to_err)?;
                 let mut out = Vec::new();
                 for htup in table {
@@ -730,8 +721,7 @@ mod pgx_impl {
                     }
                 }
                 Ok(out)
-            });
-            result
+            })
         }
     }
 
@@ -739,17 +729,16 @@ mod pgx_impl {
     impl RevisionReader for PostgresDatastore {
         async fn read_latest_revision(&self) -> Result<String, AuthzError> {
             let sql = "SELECT revision_id FROM authz.revision ORDER BY created_at DESC LIMIT 1";
-            let result = Spi::connect_mut(|client| {
-                let table = client.update(sql, None, &[]).map_err(to_err)?;
-                for htup in table {
+            Spi::connect_mut(|client| {
+                let mut table = client.update(sql, None, &[]).map_err(to_err)?;
+                if let Some(htup) = table.next() {
                     let revision_id: Option<String> =
                         htup.get_by_name("revision_id").map_err(to_err)?;
                     return Ok(revision_id.unwrap_or_else(|| "0".to_string()));
                 }
                 // No rows found (bootstrap case)
                 Ok("0".to_string())
-            });
-            result
+            })
         }
     }
 }

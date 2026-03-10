@@ -48,12 +48,10 @@ pub fn update_tracing_level() {
 /// Create env filter from GUC or environment
 fn create_env_filter() -> EnvFilter {
     // Try RUST_LOG first, then fall back to GUC
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+    EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         let level = guc::get_tracing_level();
         EnvFilter::new(format!("authz_core={},pgauthz={}", level, level))
-    });
-
-    filter
+    })
 }
 
 /// Custom tracing layer that forwards events to pgrx logging
@@ -92,10 +90,10 @@ where
         event.record(&mut field_visitor);
 
         // Record cache hit metrics if this is a cache_hit event
-        if message == "cache_hit" {
-            if let Some(level) = cache_level {
-                crate::metrics::record_cache_hit(level.as_str());
-            }
+        if message == "cache_hit"
+            && let Some(level) = cache_level
+        {
+            crate::metrics::record_cache_hit(level.as_str());
         }
 
         // Format the log message

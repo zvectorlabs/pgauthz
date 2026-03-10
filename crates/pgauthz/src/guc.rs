@@ -209,7 +209,7 @@ pub fn get_otel_service_name() -> String {
 
 /// Get authz.otel_trace_sampling_ratio from GUC (converts percentage to 0.0-1.0)
 pub fn get_otel_trace_sampling_ratio() -> f64 {
-    let percentage = OTEL_TRACE_SAMPLING_RATIO.get().max(0).min(100);
+    let percentage = OTEL_TRACE_SAMPLING_RATIO.get().clamp(0, 100);
     percentage as f64 / 100.0
 }
 /// Check optimization strategy.

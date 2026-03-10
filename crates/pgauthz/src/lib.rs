@@ -20,7 +20,7 @@ use crate::validation::{
     validate_read_changes_args,
 };
 use authz_core::error::AuthzError;
-use authz_core::traits::{ModelReader, ModelWriter, TupleReader, TupleWriter};
+use authz_core::traits::{PolicyReader, PolicyWriter, TupleReader, TupleWriter};
 use authz_datastore_pgx::PostgresDatastore;
 use pgrx::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -217,6 +217,7 @@ fn pgauthz_list_policies(
 
 /// Read the latest authorization policy with full computed structure.
 #[pg_extern]
+#[allow(clippy::type_complexity)]
 fn pgauthz_read_latest_policy_computed() -> TableIterator<
     'static,
     (
@@ -299,7 +300,7 @@ fn pgauthz_read_latest_policy_computed() -> TableIterator<
         ));
     }
 
-    TableIterator::new(rows.into_iter())
+    TableIterator::new(rows)
 }
 
 /// Read changelog entries for a given object type (for Watch API).

@@ -108,10 +108,13 @@ fn pgauthz_list_objects(
         guc::CheckStrategy::Parallel => CheckStrategy::Parallel,
     };
 
-    let resolver = CoreResolver::new(ds.clone(), StaticPolicyProvider::from_arc(type_system.clone()))
-        .with_strategy(strategy)
-        .with_result_cache(cache::get_result_cache())
-        .with_tuple_cache(cache::get_tuple_cache());
+    let resolver = CoreResolver::new(
+        ds.clone(),
+        StaticPolicyProvider::from_arc(type_system.clone()),
+    )
+    .with_strategy(strategy)
+    .with_result_cache(cache::get_result_cache())
+    .with_tuple_cache(cache::get_tuple_cache());
     let dispatcher = LocalDispatcher::new(resolver);
 
     // Candidate seeding: scan all tuples for the requested object_type, then verify each
@@ -277,8 +280,8 @@ fn pgauthz_list_subjects(
         // It's a permission - extract relations from the permission expression
         let mut relations = Vec::new();
         extract_relation_names_from_exprs(
-            &[permission.expression.clone()],
-            &*type_system,
+            std::slice::from_ref(&permission.expression),
+            &type_system,
             object_type,
             &mut relations,
         );

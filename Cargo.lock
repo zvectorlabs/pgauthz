@@ -74,7 +74,24 @@ dependencies = [
  "async-trait",
  "cel",
  "futures",
- "opentelemetry",
+ "pest",
+ "pest_derive",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "authz-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fbf38b131f072e8d889b035f20df604d77c1a94b2eaf76a6c56cf4c91af5931"
+dependencies = [
+ "async-trait",
+ "cel",
+ "futures",
  "pest",
  "pest_derive",
  "serde",
@@ -89,7 +106,7 @@ name = "authz-datastore-pgx"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "authz-core",
+ "authz-core 0.1.0",
  "pgrx",
  "ulid",
  "uuid",
@@ -1592,7 +1609,7 @@ name = "pgauthz"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "authz-core",
+ "authz-core 0.1.0",
  "authz-datastore-pgx",
  "criterion",
  "moka",
@@ -1619,7 +1636,7 @@ name = "pgauthz-workspace"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "authz-core",
+ "authz-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
 ]
 

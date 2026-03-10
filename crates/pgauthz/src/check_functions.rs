@@ -203,7 +203,7 @@ fn pgauthz_expand(object_type: &str, object_id: &str, relation: &str) -> String 
     let ds = PostgresDatastore::new();
     let type_system = match cache::load_typesystem_cached(&ds) {
         Ok(ts) => ts,
-        Err(e) => return format!(r#"{{"error": "{}"}}"#, e.to_string()),
+        Err(e) => return format!(r#"{{"error": "{}"}}"#, e),
     };
 
     // Get the relation definition
