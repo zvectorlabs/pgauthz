@@ -76,5 +76,5 @@ This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) fo
 ## Support
 
 - Documentation: [docs](docs/)
-- Issues: [GitHub Issues](https://github.com/your-org/pgauthz/issues)
-- Discussions: [GitHub Discussions](https://github.com/your-org/pgauthz/discussions)
+- Issues: [GitHub Issues](https://github.com/zvectorlabs/pgauthz/issues)
+- Discussions: [GitHub Discussions](https://github.com/zvectorlabs/pgauthz/discussions)
